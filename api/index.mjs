@@ -107,9 +107,23 @@ export default async function handler(req) {
     if (req.method === "GET" && pathname === "/api/notices")  return Response.json(await listNotices());
     if (req.method === "GET" && pathname === "/api/settings") return Response.json(await getSettings());
 
+    // Temporary debug endpoint
+    if (req.method === "GET" && pathname === "/api/debug") {
+      return Response.json({
+        pathname,
+        fullUrl: req.url,
+        ADMIN_USER,
+        ADMIN_PASSWORD_SET: !!process.env.ADMIN_PASSWORD,
+        SUPABASE_URL_SET: !!process.env.SUPABASE_URL,
+      });
+    }
+
     // Admin login — no Supabase needed here
     if (req.method === "POST" && pathname === "/api/admin/login") {
       const data = await req.json();
+      console.log("[LOGIN] received:", JSON.stringify({ u: data.username, p: data.password }));
+      console.log("[LOGIN] expected:", JSON.stringify({ u: ADMIN_USER, p: ADMIN_PASSWORD }));
+      console.log("[LOGIN] match:", data.username === ADMIN_USER && data.password === ADMIN_PASSWORD);
       if (data.username === ADMIN_USER && data.password === ADMIN_PASSWORD) {
         const token = makeToken(ADMIN_USER);
         return Response.json(
