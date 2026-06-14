@@ -44,7 +44,7 @@ function verifyToken(token) {
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
 function cookieValue(req, name) {
-  const cookie = req.headers.get?.("cookie") || req.headers["cookie"] || "";
+  const cookie = req.headers["cookie"] || "";
   return cookie
     .split(";")
     .map((item) => item.trim().split("="))
@@ -53,8 +53,7 @@ function cookieValue(req, name) {
 
 function requireAdmin(req) {
   const token = cookieValue(req, "yd_admin");
-  if (token && verifyToken(token)) return null;
-  return Response.json({ error: "Admin login required" }, { status: 401 });
+  return token && verifyToken(token);
 }
 
 async function listEvents() {
@@ -92,132 +91,139 @@ async function getSettings() {
   }
 }
 
-// ─── Main handler ─────────────────────────────────────────────────────────────
-export default async function handler(req) {
-  const url      = new URL(req.url);
-  const pathname = url.pathname;
+// ─── Helper: read body from Node req ─────────────────────────────────────────
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", chunk => { body += chunk; });
+    req.on("end", () => { try { resolve(JSON.parse(body || "{}")); } catch { resolve({}); } });
+    req.on("error", reject);
+  });
+}
+
+function json(res, data, status = 200, extraHeaders = {}) {
+  const body = JSON.stringify(data);
+  res.writeHead(status, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", ...extraHeaders });
+  res.end(body);
+}
+
+// ─── Main handler (Vercel Node.js serverless format) ─────────────────────────
+export default async function handler(req, res) {
+  const pathname = req.url.split("?")[0];
 
   try {
     // Public endpoints
     if (req.method === "GET" && pathname === "/api/site") {
       const [events, notices, settings] = await Promise.all([listEvents(), listNotices(), getSettings()]);
-      return Response.json({ events, notices, settings, stats: { events: events.length, notices: notices.length } });
+      return json(res, { events, notices, settings, stats: { events: events.length, notices: notices.length } });
     }
-    if (req.method === "GET" && pathname === "/api/events")   return Response.json(await listEvents());
-    if (req.method === "GET" && pathname === "/api/notices")  return Response.json(await listNotices());
-    if (req.method === "GET" && pathname === "/api/settings") return Response.json(await getSettings());
+    if (req.method === "GET" && pathname === "/api/events")   return json(res, await listEvents());
+    if (req.method === "GET" && pathname === "/api/notices")  return json(res, await listNotices());
+    if (req.method === "GET" && pathname === "/api/settings") return json(res, await getSettings());
 
-    // Temporary debug endpoint
+    // Debug endpoint
     if (req.method === "GET" && pathname === "/api/debug") {
-      return Response.json({
+      return json(res, {
         pathname,
-        fullUrl: req.url,
+        url: req.url,
         ADMIN_USER,
-        ADMIN_PASSWORD_SET: !!process.env.ADMIN_PASSWORD,
+        ADMIN_PASSWORD,
         SUPABASE_URL_SET: !!process.env.SUPABASE_URL,
+        env: Object.keys(process.env).filter(k => k.startsWith("ADMIN") || k.startsWith("SUPA"))
       });
     }
 
-    // Admin login — no Supabase needed here
+    // Admin login — no Supabase needed
     if (req.method === "POST" && pathname === "/api/admin/login") {
-      const data = await req.json();
-      console.log("[LOGIN] received:", JSON.stringify({ u: data.username, p: data.password }));
-      console.log("[LOGIN] expected:", JSON.stringify({ u: ADMIN_USER, p: ADMIN_PASSWORD }));
-      console.log("[LOGIN] match:", data.username === ADMIN_USER && data.password === ADMIN_PASSWORD);
+      const data = await readBody(req);
+      console.log("[LOGIN] received:", JSON.stringify({ u: data.username }));
+      console.log("[LOGIN] ADMIN_USER env:", ADMIN_USER);
       if (data.username === ADMIN_USER && data.password === ADMIN_PASSWORD) {
         const token = makeToken(ADMIN_USER);
-        return Response.json(
-          { ok: true, user: ADMIN_USER },
-          { status: 200, headers: { "Set-Cookie": `yd_admin=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=28800` } }
-        );
+        return json(res, { ok: true, user: ADMIN_USER }, 200, {
+          "Set-Cookie": `yd_admin=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=28800`
+        });
       }
-      return Response.json({ error: "Invalid admin username or password" }, { status: 401 });
+      return json(res, { error: "Invalid admin username or password" }, 401);
     }
 
     // Admin logout
     if (req.method === "POST" && pathname === "/api/admin/logout") {
-      return Response.json({ ok: true }, { status: 200, headers: { "Set-Cookie": "yd_admin=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0" } });
+      return json(res, { ok: true }, 200, { "Set-Cookie": "yd_admin=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0" });
     }
 
     // Admin dashboard
     if (req.method === "GET" && pathname === "/api/dashboard") {
-      const blocked = requireAdmin(req);
-      if (blocked) return blocked;
+      const authErr = requireAdmin(req);
+      if (authErr) return json(res, { error: "Admin login required" }, 401);
       const [events, notices, settings] = await Promise.all([listEvents(), listNotices(), getSettings()]);
-      return Response.json({ events, notices, settings, stats: { events: events.length, notices: notices.length } });
+      return json(res, { events, notices, settings, stats: { events: events.length, notices: notices.length } });
     }
 
     // Add event
     if (req.method === "POST" && pathname === "/api/events") {
-      const blocked = requireAdmin(req);
-      if (blocked) return blocked;
-      const data = await req.json();
+      const authErr = requireAdmin(req);
+      if (authErr) return json(res, { error: "Admin login required" }, 401);
+      const data = await readBody(req);
       await getSupabaseAdmin().from("events").insert({
-        title:       data.title,
-        teacher:     data.teacher,
-        category:    data.category || "Yoga Session",
-        date:        data.date,
-        time:        data.time,
-        location:    data.location,
-        fee:         data.fee || "Free",
-        description: data.description,
-        image_url:   data.image_url || "",
-        pdf_url:     data.pdf_url || "",
-        whatsapp:    data.whatsapp || "919999999999"
+        title: data.title, teacher: data.teacher,
+        category: data.category || "Yoga Session",
+        date: data.date, time: data.time, location: data.location,
+        fee: data.fee || "Free", description: data.description,
+        image_url: data.image_url || "", pdf_url: data.pdf_url || "",
+        whatsapp: data.whatsapp || "919999999999"
       });
-      return Response.json({ ok: true, events: await listEvents() }, { status: 201 });
+      return json(res, { ok: true, events: await listEvents() }, 201);
     }
 
     // Add notice
     if (req.method === "POST" && pathname === "/api/notices") {
-      const blocked = requireAdmin(req);
-      if (blocked) return blocked;
-      const data = await req.json();
+      const authErr = requireAdmin(req);
+      if (authErr) return json(res, { error: "Admin login required" }, 401);
+      const data = await readBody(req);
       await getSupabaseAdmin().from("notices").insert({
-        title:        data.title,
-        type:         data.type || "Notice",
-        published_on: data.published_on,
-        summary:      data.summary,
-        pdf_url:      data.pdf_url || ""
+        title: data.title, type: data.type || "Notice",
+        published_on: data.published_on, summary: data.summary,
+        pdf_url: data.pdf_url || ""
       });
-      return Response.json({ ok: true, notices: await listNotices() }, { status: 201 });
+      return json(res, { ok: true, notices: await listNotices() }, 201);
     }
 
     // Update settings
     if (req.method === "POST" && pathname === "/api/settings") {
-      const blocked = requireAdmin(req);
-      if (blocked) return blocked;
-      const data = await req.json();
-      const updates = [];
-      for (const [key, value] of Object.entries(data)) {
-        updates.push(getSupabaseAdmin().from("site_settings").upsert({ key, value }, { onConflict: "key" }));
-      }
-      await Promise.all(updates);
-      return Response.json({ ok: true, settings: await getSettings() });
+      const authErr = requireAdmin(req);
+      if (authErr) return json(res, { error: "Admin login required" }, 401);
+      const data = await readBody(req);
+      await Promise.all(
+        Object.entries(data).map(([key, value]) =>
+          getSupabaseAdmin().from("site_settings").upsert({ key, value }, { onConflict: "key" })
+        )
+      );
+      return json(res, { ok: true, settings: await getSettings() });
     }
 
     // Delete event
     if (req.method === "DELETE" && pathname.startsWith("/api/events/")) {
-      const blocked = requireAdmin(req);
-      if (blocked) return blocked;
+      const authErr = requireAdmin(req);
+      if (authErr) return json(res, { error: "Admin login required" }, 401);
       const id = pathname.split("/").pop();
       await getSupabaseAdmin().from("events").delete().eq("id", id);
-      return Response.json({ ok: true, events: await listEvents() });
+      return json(res, { ok: true, events: await listEvents() });
     }
 
     // Delete notice
     if (req.method === "DELETE" && pathname.startsWith("/api/notices/")) {
-      const blocked = requireAdmin(req);
-      if (blocked) return blocked;
+      const authErr = requireAdmin(req);
+      if (authErr) return json(res, { error: "Admin login required" }, 401);
       const id = pathname.split("/").pop();
       await getSupabaseAdmin().from("notices").delete().eq("id", id);
-      return Response.json({ ok: true, notices: await listNotices() });
+      return json(res, { ok: true, notices: await listNotices() });
     }
 
-    return Response.json({ error: "Not found" }, { status: 404 });
+    return json(res, { error: "Not found" }, 404);
 
   } catch (err) {
     console.error("[API ERROR]", err.message, err.stack);
-    return Response.json({ error: err.message }, { status: 500 });
+    return json(res, { error: err.message }, 500);
   }
 }
