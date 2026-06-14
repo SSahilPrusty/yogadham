@@ -125,7 +125,7 @@ async function listNotices() {
 
 async function getSettings() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("site_settings")
       .select("key, value");
     if (error) throw error;

@@ -9,6 +9,10 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_ANON_KEY
 );
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY
+);
 
 function response(payload, status = 200, headers = {}) {
   return Response.json(payload, { status, headers });
@@ -49,24 +53,22 @@ function requireAdmin(req) {
 }
 
 async function siteData() {
-  const { data: events, error: eErr } = await supabase
+  const { data: events } = await supabaseAdmin
     .from("events")
     .select("*")
     .order("date", { ascending: true })
     .order("id", { ascending: false });
   
-  const { data: notices, error: nErr } = await supabase
+  const { data: notices } = await supabaseAdmin
     .from("notices")
     .select("*")
     .order("published_on", { ascending: false })
     .order("id", { ascending: false });
 
-  if (eErr || nErr) throw eErr || nErr;
-
   return {
-    events,
-    notices,
-    stats: { events: events.length, notices: notices.length }
+    events: events || [],
+    notices: notices || [],
+    stats: { events: (events || []).length, notices: (notices || []).length }
   };
 }
 
