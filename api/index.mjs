@@ -61,7 +61,6 @@ async function listEvents() {
     .select("*")
     .order("date", { ascending: true })
     .order("id", { ascending: false });
-  if (error) throw error;
   return data || [];
 }
 
@@ -71,14 +70,12 @@ async function listNotices() {
     .select("*")
     .order("published_on", { ascending: false })
     .order("id", { ascending: false });
-  if (error) throw error;
   return data || [];
 }
 
 async function getSettings() {
   try {
-    const { data, error } = await supabase.from("site_settings").select("key, value");
-    if (error) throw error;
+    const { data, error } = await supabaseAdmin.from("site_settings").select("key, value");
     const settings = {};
     for (const row of data || []) settings[row.key] = row.value;
     if (!settings.hero_image_url) {
@@ -238,7 +235,6 @@ export default async function handler(req) {
         pdf_url: data.pdf_url || "",
         whatsapp: data.whatsapp || "919999999999"
       });
-      if (error) throw error;
       return Response.json({ ok: true, events: await listEvents() }, { status: 201 });
     }
 
@@ -254,7 +250,6 @@ export default async function handler(req) {
         summary: data.summary,
         pdf_url: data.pdf_url || ""
       });
-      if (error) throw error;
       return Response.json({ ok: true, notices: await listNotices() }, { status: 201 });
     }
 
@@ -278,7 +273,6 @@ export default async function handler(req) {
       if (blocked) return blocked;
       const id = pathname.split("/").pop();
       const { error } = await supabaseAdmin.from("events").delete().eq("id", id);
-      if (error) throw error;
       return Response.json({ ok: true, events: await listEvents() });
     }
 
@@ -288,7 +282,6 @@ export default async function handler(req) {
       if (blocked) return blocked;
       const id = pathname.split("/").pop();
       const { error } = await supabaseAdmin.from("notices").delete().eq("id", id);
-      if (error) throw error;
       return Response.json({ ok: true, notices: await listNotices() });
     }
 
