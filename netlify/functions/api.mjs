@@ -107,7 +107,7 @@ export default async function handler(req) {
       const blocked = requireAdmin(req);
       if (blocked) return blocked;
       const data = await req.json();
-      const { error } = await supabase.from("events").insert({
+      const { error } = await supabaseAdmin.from("events").insert({
         title: data.title,
         teacher: data.teacher,
         category: data.category || "Session",
@@ -128,7 +128,7 @@ export default async function handler(req) {
       const blocked = requireAdmin(req);
       if (blocked) return blocked;
       const data = await req.json();
-      const { error } = await supabase.from("notices").insert({
+      const { error } = await supabaseAdmin.from("notices").insert({
         title: data.title,
         type: data.type || "Notice",
         published_on: data.published_on,
@@ -143,7 +143,7 @@ export default async function handler(req) {
       const blocked = requireAdmin(req);
       if (blocked) return blocked;
       const id = pathname.split("/").pop();
-      const { error } = await supabase.from("events").delete().eq("id", id);
+      const { error } = await supabaseAdmin.from("events").delete().eq("id", id);
       if (error) throw error;
       return response({ ok: true });
     }
@@ -152,7 +152,7 @@ export default async function handler(req) {
       const blocked = requireAdmin(req);
       if (blocked) return blocked;
       const id = pathname.split("/").pop();
-      const { error } = await supabase.from("notices").delete().eq("id", id);
+      const { error } = await supabaseAdmin.from("notices").delete().eq("id", id);
       if (error) throw error;
       return response({ ok: true });
     }
