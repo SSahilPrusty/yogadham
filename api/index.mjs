@@ -2,21 +2,26 @@ import { createClient } from "@supabase/supabase-js";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 // ─── Configuration ────────────────────────────────────────────────────────────
-const ADMIN_USER = process.env.ADMIN_USER || "yogisahilprusty@gmail.com";
+const ADMIN_USER     = process.env.ADMIN_USER     || "yogisahilprusty@gmail.com";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "yogadham123";
-const ADMIN_SECRET = process.env.ADMIN_SECRET || "yogadham-secret-fallback";
+const ADMIN_SECRET   = process.env.ADMIN_SECRET   || "yogadham-secret-fallback";
 
-// Supabase clients
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY
-);
+// ─── Lazy Supabase clients (avoid module-level crash if env vars missing) ─────
+function getSupabase() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_ANON_KEY;
+  if (!url || !key) throw new Error(`SUPABASE_URL or SUPABASE_ANON_KEY is not set. URL=${url} KEY=${key ? "set" : "missing"}`);
+  return createClient(url, key);
+}
 
-// ─── HMAC Token Auth (stateless — works across Vercel serverless instances) ────
+function getSupabaseAdmin() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  if (!url || !key) throw new Error(`SUPABASE_URL or SUPABASE_SERVICE_KEY is not set. URL=${url} KEY=${key ? "set" : "missing"}`);
+  return createClient(url, key);
+}
+
+// ─── HMAC Token Auth (stateless — works across Vercel serverless instances) ───
 function hmac(value) {
   return createHmac("sha256", ADMIN_SECRET).update(value).digest("hex");
 }
@@ -33,11 +38,11 @@ function verifyToken(token) {
   const age = Date.now() - Number(parts[1]);
   if (!Number.isFinite(age) || age > 8 * 60 * 60 * 1000) return false;
   const expected = Buffer.from(hmac(payload));
-  const actual = Buffer.from(parts[2]);
+  const actual   = Buffer.from(parts[2]);
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
-// ─── Helper functions ──────────────────────────────────────────────────────────
+// ─── Helper functions ─────────────────────────────────────────────────────────
 function cookieValue(req, name) {
   const cookie = req.headers.get?.("cookie") || req.headers["cookie"] || "";
   return cookie
@@ -53,7 +58,7 @@ function requireAdmin(req) {
 }
 
 async function listEvents() {
-  const { data } = await supabaseAdmin
+  const { data } = await getSupabaseAdmin()
     .from("events")
     .select("*")
     .order("date", { ascending: true })
@@ -62,7 +67,7 @@ async function listEvents() {
 }
 
 async function listNotices() {
-  const { data } = await supabaseAdmin
+  const { data } = await getSupabaseAdmin()
     .from("notices")
     .select("*")
     .order("published_on", { ascending: false })
@@ -72,7 +77,7 @@ async function listNotices() {
 
 async function getSettings() {
   try {
-    const { data } = await supabaseAdmin.from("site_settings").select("key, value");
+    const { data } = await getSupabaseAdmin().from("site_settings").select("key, value");
     const settings = {};
     for (const row of data || []) settings[row.key] = row.value;
     if (!settings.hero_image_url) {
@@ -89,7 +94,7 @@ async function getSettings() {
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
 export default async function handler(req) {
-  const url = new URL(req.url);
+  const url      = new URL(req.url);
   const pathname = url.pathname;
 
   try {
@@ -98,11 +103,11 @@ export default async function handler(req) {
       const [events, notices, settings] = await Promise.all([listEvents(), listNotices(), getSettings()]);
       return Response.json({ events, notices, settings, stats: { events: events.length, notices: notices.length } });
     }
-    if (req.method === "GET" && pathname === "/api/events") return Response.json(await listEvents());
-    if (req.method === "GET" && pathname === "/api/notices") return Response.json(await listNotices());
+    if (req.method === "GET" && pathname === "/api/events")   return Response.json(await listEvents());
+    if (req.method === "GET" && pathname === "/api/notices")  return Response.json(await listNotices());
     if (req.method === "GET" && pathname === "/api/settings") return Response.json(await getSettings());
 
-    // Admin login
+    // Admin login — no Supabase needed here
     if (req.method === "POST" && pathname === "/api/admin/login") {
       const data = await req.json();
       if (data.username === ADMIN_USER && data.password === ADMIN_PASSWORD) {
@@ -133,18 +138,18 @@ export default async function handler(req) {
       const blocked = requireAdmin(req);
       if (blocked) return blocked;
       const data = await req.json();
-      await supabaseAdmin.from("events").insert({
-        title: data.title,
-        teacher: data.teacher,
-        category: data.category || "Yoga Session",
-        date: data.date,
-        time: data.time,
-        location: data.location,
-        fee: data.fee || "Free",
+      await getSupabaseAdmin().from("events").insert({
+        title:       data.title,
+        teacher:     data.teacher,
+        category:    data.category || "Yoga Session",
+        date:        data.date,
+        time:        data.time,
+        location:    data.location,
+        fee:         data.fee || "Free",
         description: data.description,
-        image_url: data.image_url || "",
-        pdf_url: data.pdf_url || "",
-        whatsapp: data.whatsapp || "919999999999"
+        image_url:   data.image_url || "",
+        pdf_url:     data.pdf_url || "",
+        whatsapp:    data.whatsapp || "919999999999"
       });
       return Response.json({ ok: true, events: await listEvents() }, { status: 201 });
     }
@@ -154,12 +159,12 @@ export default async function handler(req) {
       const blocked = requireAdmin(req);
       if (blocked) return blocked;
       const data = await req.json();
-      await supabaseAdmin.from("notices").insert({
-        title: data.title,
-        type: data.type || "Notice",
+      await getSupabaseAdmin().from("notices").insert({
+        title:        data.title,
+        type:         data.type || "Notice",
         published_on: data.published_on,
-        summary: data.summary,
-        pdf_url: data.pdf_url || ""
+        summary:      data.summary,
+        pdf_url:      data.pdf_url || ""
       });
       return Response.json({ ok: true, notices: await listNotices() }, { status: 201 });
     }
@@ -171,7 +176,7 @@ export default async function handler(req) {
       const data = await req.json();
       const updates = [];
       for (const [key, value] of Object.entries(data)) {
-        updates.push(supabaseAdmin.from("site_settings").upsert({ key, value }, { onConflict: "key" }));
+        updates.push(getSupabaseAdmin().from("site_settings").upsert({ key, value }, { onConflict: "key" }));
       }
       await Promise.all(updates);
       return Response.json({ ok: true, settings: await getSettings() });
@@ -182,7 +187,7 @@ export default async function handler(req) {
       const blocked = requireAdmin(req);
       if (blocked) return blocked;
       const id = pathname.split("/").pop();
-      await supabaseAdmin.from("events").delete().eq("id", id);
+      await getSupabaseAdmin().from("events").delete().eq("id", id);
       return Response.json({ ok: true, events: await listEvents() });
     }
 
@@ -191,13 +196,14 @@ export default async function handler(req) {
       const blocked = requireAdmin(req);
       if (blocked) return blocked;
       const id = pathname.split("/").pop();
-      await supabaseAdmin.from("notices").delete().eq("id", id);
+      await getSupabaseAdmin().from("notices").delete().eq("id", id);
       return Response.json({ ok: true, notices: await listNotices() });
     }
 
     return Response.json({ error: "Not found" }, { status: 404 });
+
   } catch (err) {
-    console.error(err);
+    console.error("[API ERROR]", err.message, err.stack);
     return Response.json({ error: err.message }, { status: 500 });
   }
 }
