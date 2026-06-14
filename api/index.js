@@ -188,16 +188,30 @@ export default async function handler(req, res) {
     if (req.method === "GET" && pathname === "/api/notices")  return json(res, await listNotices());
     if (req.method === "GET" && pathname === "/api/settings") return json(res, await getSettings());
 
+    // Debug endpoint
+    if (req.method === "GET" && pathname === "/api/debug") {
+      return json(res, {
+        ADMIN_USER,
+        ADMIN_PASSWORD,
+        ADMIN_USER_LEN: ADMIN_USER.length,
+        ADMIN_PASSWORD_LEN: ADMIN_PASSWORD.length,
+        SUPABASE_URL: process.env.SUPABASE_URL || "not set",
+        env_keys: Object.keys(process.env).filter(k => k.startsWith("ADMIN") || k.startsWith("SUPA"))
+      });
+    }
     // Admin login
     if (req.method === "POST" && pathname === "/api/admin/login") {
       const data = await readBody(req);
+      console.log("[LOGIN] body_username:", JSON.stringify(data.username), "body_password:", JSON.stringify(data.password));
+      console.log("[LOGIN] ADMIN_USER:", JSON.stringify(ADMIN_USER), "ADMIN_PASSWORD:", JSON.stringify(ADMIN_PASSWORD));
+      console.log("[LOGIN] match:", data.username === ADMIN_USER, data.password === ADMIN_PASSWORD);
       if (data.username === ADMIN_USER && data.password === ADMIN_PASSWORD) {
         const token = makeToken(ADMIN_USER);
         return json(res, { ok: true, user: ADMIN_USER }, 200, {
           "Set-Cookie": `yd_admin=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=28800`
         });
       }
-      return json(res, { error: "Invalid admin username or password" }, 401);
+      return json(res, { error: "Invalid admin username or password", received_user: data.username, expected_user: ADMIN_USER }, 401);
     }
 
     // Admin logout
