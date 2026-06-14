@@ -23,12 +23,15 @@ function getSupabaseAdmin() {
 }
 
 // ─── HMAC Token Auth (stateless — works across Vercel serverless instances) ───
+// NOTE: username is base64url-encoded so dots in email don't break the 3-part split
 function hmac(value) {
   return createHmac("sha256", ADMIN_SECRET).update(value).digest("hex");
 }
 
 function makeToken(username) {
-  const payload = `${username}.${Date.now()}`;
+  const userB64 = Buffer.from(username).toString("base64url");
+  const ts = Date.now().toString();
+  const payload = `${userB64}.${ts}`;
   return `${payload}.${hmac(payload)}`;
 }
 
