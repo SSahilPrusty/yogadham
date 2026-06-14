@@ -123,13 +123,16 @@ export default async function handler(req, res) {
 
     // Debug endpoint
     if (req.method === "GET" && pathname === "/api/debug") {
+      const formatKey = (k) => k ? `${k.substring(0, 15)}...${k.substring(k.length - 10)}` : "not set";
       return json(res, {
         pathname,
         url: req.url,
         ADMIN_USER,
         ADMIN_PASSWORD,
         SUPABASE_URL_SET: !!process.env.SUPABASE_URL,
-        SUPABASE_URL: process.env.SUPABASE_URL ? process.env.SUPABASE_URL.substring(0, 30) + "..." : "not set",
+        SUPABASE_URL: process.env.SUPABASE_URL || "not set",
+        SUPABASE_ANON_KEY_TRUNC: formatKey(process.env.SUPABASE_ANON_KEY),
+        SUPABASE_SERVICE_KEY_TRUNC: formatKey(process.env.SUPABASE_SERVICE_KEY),
         env: Object.keys(process.env).filter(k => k.startsWith("ADMIN") || k.startsWith("SUPA"))
       });
     }
