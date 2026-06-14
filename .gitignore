@@ -1,0 +1,14 @@
+# Dependency directories
+node_modules/
+
+# Environment variables (contains private database keys)
+.env
+.env.*
+
+# Local SQLite databases
+data/*.sqlite
+data/*.db
+
+# User uploaded files (PDFs/images)
+public/uploads/*
+!public/uploads/.gitkeep

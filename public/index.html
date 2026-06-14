@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yoga Dham | Events, Notices and Sessions</title>
+    <meta name="description" content="Yoga Dham brings together yoga classes, pranayama, meditation, health awareness programs, camps, teacher sessions and community announcements in one trusted place." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Serif:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#home" aria-label="Yoga Dham home">
+        <!-- Logo image (shown when logo_url is set) -->
+        <img id="logoImg" class="logo-img hidden" alt="Yoga Dham logo">
+        <!-- Fallback text mark (shown when no logo) -->
+        <span id="logoMark" class="brand-mark">YD</span>
+        <span>
+          <strong>Yoga Dham</strong>
+          <small>Yoga, meditation and community events</small>
+        </span>
+      </a>
+      <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <nav id="topNav">
+        <a href="#home" data-route="home">Home</a>
+        <a href="#about" data-route="about">About</a>
+        <a href="#events" data-route="events">Events</a>
+        <a href="#notices" data-route="notices">Notices</a>
+        <a href="#contact" data-route="contact">Contact</a>
+        <a href="#admin" data-route="admin">Admin</a>
+      </nav>
+    </header>
+
+    <main>
+      <!-- ── HOME / HERO ── -->
+      <section id="home" class="hero page-view active">
+        <div class="hero-copy">
+          <p class="eyebrow">Yoga Dham Organisation</p>
+          <h1>Yoga programs, notices and teacher-led wellness sessions.</h1>
+          <p>
+            Yoga Dham brings together yoga classes, pranayama, meditation, health awareness
+            programs, camps, teacher sessions and community announcements in one trusted place.
+          </p>
+          <div class="hero-actions">
+            <a class="btn primary" href="#events" data-route-link="events">Explore Events</a>
+            <a class="btn quiet" href="#contact" data-route-link="contact">WhatsApp Enquiry</a>
+          </div>
+        </div>
+        <aside class="hero-panel">
+          <div>
+            <span id="eventCount">0</span>
+            <p>Upcoming events</p>
+          </div>
+          <div>
+            <span id="noticeCount">0</span>
+            <p>Notices and advertisements</p>
+          </div>
+          <div>
+            <span>Direct</span>
+            <p>WhatsApp enquiry from every event</p>
+          </div>
+        </aside>
+      </section>
+
+      <!-- ── ABOUT ── -->
+      <section id="about" class="section about-section page-view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">About The Organisation</p>
+            <h2>What Yoga Dham Does</h2>
+          </div>
+          <p class="section-intro">
+            Yoga Dham is a wellness-focused organisation that helps people learn yoga,
+            discipline, breathing practices and mindful living through regular programs.
+          </p>
+        </div>
+        <div class="about-grid">
+          <article>
+            <h3>Yoga Sessions</h3>
+            <p>Daily and special yoga sessions led by different teachers for beginners, students, families and regular practitioners.</p>
+          </article>
+          <article>
+            <h3>Workshops and Camps</h3>
+            <p>Focused programs for pranayama, meditation, kids yoga, health awareness, flexibility, stress relief and wellness routines.</p>
+          </article>
+          <article>
+            <h3>Notices and Updates</h3>
+            <p>Official notices, advertisements, PDF circulars, teacher announcements and event schedules are published for visitors.</p>
+          </article>
+          <article>
+            <h3>Community Guidance</h3>
+            <p>People can view details, download documents and contact Yoga Dham directly on WhatsApp for joining or asking questions.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ── EVENTS ── -->
+      <section id="events" class="section events-section page-view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Upcoming Programs</p>
+            <h2>Events and Teacher Sessions</h2>
+          </div>
+          <div class="filters" role="group" aria-label="Event filters">
+            <button class="chip active" data-filter="All">All</button>
+            <button class="chip" data-filter="Yoga Session">Sessions</button>
+            <button class="chip" data-filter="Workshop">Workshops</button>
+            <button class="chip" data-filter="Camp">Camps</button>
+          </div>
+        </div>
+        <div id="eventGrid" class="event-grid"></div>
+      </section>
+
+      <!-- ── NOTICES ── -->
+      <section id="notices" class="section notices-band page-view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Official Board</p>
+            <h2>Notices and Advertisements</h2>
+          </div>
+          <p class="section-intro">PDF notices, public advertisements and official updates from Yoga Dham are shown here.</p>
+        </div>
+        <div id="noticeList" class="notice-list"></div>
+      </section>
+
+      <!-- ── CONTACT ── -->
+      <section id="contact" class="section contact-section page-view">
+        <div>
+          <p class="eyebrow">Contact</p>
+          <h2>Interested in a session?</h2>
+          <p>Open any event and use the WhatsApp button. The message will automatically include the event name and date.</p>
+          <p>Alternatively, you can email us at: <a href="mailto:yogisahilprusty@gmail.com" style="color: var(--sun);">yogisahilprusty@gmail.com</a></p>
+        </div>
+        <div class="hero-actions">
+          <a class="btn primary" target="_blank" rel="noreferrer" href="https://wa.me/919999999999?text=Namaste%20Yoga%20Dham%2C%20I%20want%20to%20know%20about%20upcoming%20events.">Contact on WhatsApp</a>
+          <a class="btn quiet" href="mailto:yogisahilprusty@gmail.com">Email Us</a>
+        </div>
+      </section>
+
+      <!-- ── ADMIN ── -->
+      <section id="admin" class="section admin-section page-view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Secure Panel</p>
+            <h2>Admin Login and Management</h2>
+          </div>
+          <button id="logoutBtn" class="btn quiet hidden" type="button">Logout</button>
+        </div>
+
+        <!-- Login box -->
+        <div id="loginBox" class="login-grid">
+          <form id="loginForm" class="login-card">
+            <h3>Admin Login</h3>
+            <p>Login is required before adding events, uploading PDFs or deleting database records.</p>
+            <label>Username<input name="username" required autocomplete="username" placeholder="yogisahilprusty@gmail.com"></label>
+            <label>Password<input name="password" required type="password" autocomplete="current-password" placeholder="Enter password"></label>
+            <button class="btn primary" type="submit">Login</button>
+          </form>
+          <aside class="login-note">
+            <h3>Panel Features</h3>
+            <ul>
+              <li>Add teacher-led events and sessions.</li>
+              <li>Upload PDF notices and event documents.</li>
+              <li>Change site logo and hero background image.</li>
+              <li>Maintain database records from one dashboard.</li>
+            </ul>
+          </aside>
+        </div>
+
+        <!-- Admin panel (after login) -->
+        <div id="adminPanel" class="admin-panel hidden">
+          <div class="tabs" role="tablist" aria-label="Panel tabs">
+            <button class="tab active" data-tab="eventForm">Add Event</button>
+            <button class="tab" data-tab="noticeForm">Add Notice</button>
+            <button class="tab" data-tab="siteSettings">Site Settings</button>
+            <button class="tab" data-tab="records">Records</button>
+          </div>
+
+          <div class="panel-grid">
+
+            <!-- Add Event form -->
+            <form id="eventForm" class="panel-form active">
+              <h3>Add New Event</h3>
+              <label>Title<input name="title" required placeholder="Morning Yoga Session"></label>
+              <div class="split">
+                <label>Teacher<input name="teacher" required placeholder="Teacher name"></label>
+                <label>Category
+                  <select name="category">
+                    <option>Yoga Session</option>
+                    <option>Workshop</option>
+                    <option>Camp</option>
+                    <option>Advertisement</option>
+                  </select>
+                </label>
+              </div>
+              <div class="split">
+                <label>Date<input name="date" type="date" required></label>
+                <label>Time<input name="time" required placeholder="06:30 AM"></label>
+              </div>
+              <div class="split">
+                <label>Location<input name="location" required placeholder="Yoga Dham Hall"></label>
+                <label>Fee<input name="fee" placeholder="Free / Rs 299"></label>
+              </div>
+              <label>Description<textarea name="description" required rows="4" placeholder="Short event details"></textarea></label>
+              <div class="split">
+                <label>Image URL<input name="image_url" placeholder="https://..."></label>
+                <label>WhatsApp Number<input name="whatsapp" required placeholder="919999999999"></label>
+              </div>
+              <label>Event PDF<input name="pdf" type="file" accept="application/pdf"></label>
+              <button class="btn primary" type="submit">Save Event</button>
+            </form>
+
+            <!-- Add Notice form -->
+            <form id="noticeForm" class="panel-form">
+              <h3>Add Notice or Advertisement</h3>
+              <label>Title<input name="title" required placeholder="New batch admission open"></label>
+              <div class="split">
+                <label>Type
+                  <select name="type">
+                    <option>Notice</option>
+                    <option>Advertisement</option>
+                    <option>Announcement</option>
+                  </select>
+                </label>
+                <label>Published On<input name="published_on" type="date" required></label>
+              </div>
+              <label>Summary<textarea name="summary" required rows="5" placeholder="Notice details"></textarea></label>
+              <label>Notice PDF<input name="pdf" type="file" accept="application/pdf"></label>
+              <button class="btn primary" type="submit">Save Notice</button>
+            </form>
+
+            <!-- Site Settings form -->
+            <form id="siteSettings" class="panel-form settings-form">
+              <h3>Site Settings</h3>
+
+              <div class="settings-block">
+                <h4>Organisation Logo</h4>
+                <p class="settings-hint">Upload your logo image (PNG/JPG/SVG). It will appear in the navbar and replace the "YD" text mark.</p>
+                <div class="settings-preview-row">
+                  <div class="preview-box" id="logoPreviewBox">
+                    <span id="logoPreviewFallback" class="preview-mark">YD</span>
+                    <img id="logoPreview" class="hidden" alt="Logo preview">
+                  </div>
+                  <div class="settings-upload-area">
+                    <label class="upload-label" for="logoFileInput">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      Choose Logo Image
+                    </label>
+                    <input id="logoFileInput" type="file" accept="image/*" class="hidden-file-input">
+                    <p id="logoFileName" class="file-hint">No file chosen</p>
+                  </div>
+                </div>
+                <button class="btn primary" type="button" id="saveLogoBtn">Save Logo</button>
+                <button class="btn quiet" type="button" id="removeLogoBtn">Remove Logo</button>
+              </div>
+
+              <div class="settings-divider"></div>
+
+              <div class="settings-block">
+                <h4>Hero Background Photo</h4>
+                <p class="settings-hint">Upload a wide landscape photo for the homepage hero section background.</p>
+                <div class="settings-preview-row">
+                  <div class="preview-box hero-preview-box">
+                    <img id="heroPreview" alt="Hero preview">
+                  </div>
+                  <div class="settings-upload-area">
+                    <label class="upload-label" for="heroFileInput">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      Choose Hero Photo
+                    </label>
+                    <input id="heroFileInput" type="file" accept="image/*" class="hidden-file-input">
+                    <p id="heroFileName" class="file-hint">No file chosen</p>
+                    <p class="file-hint">Or paste a URL below:</p>
+                    <input id="heroUrlInput" type="url" placeholder="https://images.unsplash.com/..." style="margin-top:6px;">
+                  </div>
+                </div>
+                <button class="btn primary" type="button" id="saveHeroBtn">Save Hero Photo</button>
+              </div>
+            </form>
+
+            <!-- Records -->
+            <div id="records" class="panel-form records">
+              <h3>Database Records</h3>
+              <div id="recordList"></div>
+            </div>
+
+            <aside class="panel-aside">
+              <h3>Admin Status</h3>
+              <p>Events, notices and uploaded files are saved to Supabase after login.</p>
+              <ul>
+                <li>Database: <strong>Supabase (PostgreSQL)</strong></li>
+                <li>File uploads: <strong>public/uploads</strong></li>
+                <li>Admin: <strong id="adminUserDisplay">—</strong></li>
+              </ul>
+              <p id="toast" class="toast" aria-live="polite"></p>
+            </aside>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Event details dialog -->
+    <dialog id="eventDialog">
+      <button class="dialog-close" aria-label="Close details">✕</button>
+      <div id="eventDetails"></div>
+    </dialog>
+
+    <!-- PDF Viewer dialog -->
+    <dialog id="pdfDialog" class="pdf-dialog">
+      <div class="pdf-dialog-header">
+        <span id="pdfDialogTitle" class="pdf-title"></span>
+        <div class="pdf-header-actions">
+          <a id="pdfDownloadLink" class="btn quiet" target="_blank" rel="noreferrer" href="#">Open in New Tab</a>
+          <button class="dialog-close pdf-dialog-close" aria-label="Close PDF viewer">✕</button>
+        </div>
+      </div>
+      <iframe id="pdfFrame" title="PDF Viewer" allowfullscreen></iframe>
+    </dialog>
+
+    <footer class="site-footer">
+      <div>
+        <a class="brand footer-brand" href="#home">
+          <img id="footerLogoImg" class="logo-img hidden" alt="Yoga Dham logo">
+          <span id="footerLogoMark" class="brand-mark">YD</span>
+          <span>
+            <strong>Yoga Dham</strong>
+            <small>Yoga, meditation, wellness and community guidance.</small>
+          </span>
+        </a>
+      </div>
+      <div>
+        <h3>Organisation</h3>
+        <a href="#about" data-route-link="about">About Yoga Dham</a>
+        <a href="#events" data-route-link="events">Events</a>
+        <a href="#notices" data-route-link="notices">Notices</a>
+      </div>
+      <div>
+        <h3>Activities</h3>
+        <span>Yoga sessions</span>
+        <span>Pranayama workshops</span>
+        <span>Meditation programs</span>
+      </div>
+      <div>
+        <h3>Contact</h3>
+        <a href="#contact" data-route-link="contact">WhatsApp enquiry</a>
+        <a href="mailto:yogisahilprusty@gmail.com">yogisahilprusty@gmail.com</a>
+        <span>PDF notices and event details online</span>
+      </div>
+    </footer>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
