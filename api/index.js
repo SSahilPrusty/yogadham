@@ -129,6 +129,7 @@ export default async function handler(req, res) {
         ADMIN_USER,
         ADMIN_PASSWORD,
         SUPABASE_URL_SET: !!process.env.SUPABASE_URL,
+        SUPABASE_URL: process.env.SUPABASE_URL ? process.env.SUPABASE_URL.substring(0, 30) + "..." : "not set",
         env: Object.keys(process.env).filter(k => k.startsWith("ADMIN") || k.startsWith("SUPA"))
       });
     }
