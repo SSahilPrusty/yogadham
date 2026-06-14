@@ -1,9 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
-import { randomUUID } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 const ADMIN_USER = process.env.ADMIN_USER || "yogisahilprusty@gmail.com";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "yogadham123";
+const ADMIN_SECRET = process.env.ADMIN_SECRET || "yogadham-secret-fallback";
 
 // Supabase clients
 const supabase = createClient(
@@ -15,8 +16,26 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY
 );
 
-// In-memory sessions for admin auth (works for Vercel serverless functions with short-lived tokens)
-const sessions = new Set();
+// ─── HMAC Token Auth (stateless — works across Vercel serverless instances) ────
+function hmac(value) {
+  return createHmac("sha256", ADMIN_SECRET).update(value).digest("hex");
+}
+
+function makeToken(username) {
+  const payload = `${username}.${Date.now()}`;
+  return `${payload}.${hmac(payload)}`;
+}
+
+function verifyToken(token) {
+  const parts = token.split(".");
+  if (parts.length !== 3) return false;
+  const payload = `${parts[0]}.${parts[1]}`;
+  const age = Date.now() - Number(parts[1]);
+  if (!Number.isFinite(age) || age > 8 * 60 * 60 * 1000) return false;
+  const expected = Buffer.from(hmac(payload));
+  const actual = Buffer.from(parts[2]);
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
+}
 
 // ─── Helper functions ──────────────────────────────────────────────────────────
 function cookieValue(req, name) {
@@ -29,7 +48,7 @@ function cookieValue(req, name) {
 
 function requireAdmin(req) {
   const token = cookieValue(req, "yd_admin");
-  if (sessions.has(token)) return null;
+  if (token && verifyToken(token)) return null;
   return Response.json({ error: "Admin login required" }, { status: 401 });
 }
 
@@ -87,8 +106,7 @@ export default async function handler(req) {
     if (req.method === "POST" && pathname === "/api/admin/login") {
       const data = await req.json();
       if (data.username === ADMIN_USER && data.password === ADMIN_PASSWORD) {
-        const token = randomUUID();
-        sessions.add(token);
+        const token = makeToken(ADMIN_USER);
         return Response.json(
           { ok: true, user: ADMIN_USER },
           { status: 200, headers: { "Set-Cookie": `yd_admin=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=28800` } }
@@ -99,8 +117,6 @@ export default async function handler(req) {
 
     // Admin logout
     if (req.method === "POST" && pathname === "/api/admin/logout") {
-      const token = cookieValue(req, "yd_admin");
-      if (token) sessions.delete(token);
       return Response.json({ ok: true }, { status: 200, headers: { "Set-Cookie": "yd_admin=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0" } });
     }
 
