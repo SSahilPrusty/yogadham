@@ -89,10 +89,14 @@ async function login(form) {
   btn.disabled = true;
   try {
     const fd = new FormData(form);
+    const payload = Object.fromEntries(fd);
+    if (payload.username) payload.username = payload.username.trim();
+    if (payload.password) payload.password = payload.password.trim();
+    
     const data = await api("/api/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(Object.fromEntries(fd))
+      body: JSON.stringify(payload)
     });
     state.adminUser = data.user;
     form.reset();

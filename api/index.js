@@ -226,13 +226,15 @@ export default async function handler(req, res) {
     // Admin login
     if (req.method === "POST" && pathname === "/api/admin/login") {
       const data = await readBody(req);
-      if (data.username === ADMIN_USER && data.password === ADMIN_PASSWORD) {
+      const user = (data.username || "").trim();
+      const pass = (data.password || "").trim();
+      if (user === ADMIN_USER && pass === ADMIN_PASSWORD) {
         const token = makeToken(ADMIN_USER);
         return json(res, { ok: true, user: ADMIN_USER }, 200, {
           "Set-Cookie": `yd_admin=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=28800`
         });
       }
-      return json(res, { error: "Invalid admin username or password", received_user: data.username, expected_user: ADMIN_USER }, 401);
+      return json(res, { error: "Invalid admin username or password", received_user: user, expected_user: ADMIN_USER }, 401);
     }
 
     // Admin logout
