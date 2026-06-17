@@ -116,11 +116,18 @@ h1 {
 }
 h2 { font-size: clamp(1.85rem, 3.5vw, 3.2rem); line-height: 1.05; margin-bottom: 0; }
 h3 { font-size: 1.08rem; }
-.hero-copy > p:not(.eyebrow) {
+.hero-copy p:not(.eyebrow) {
   color: rgba(255, 255, 255, 0.86);
   font-size: 1.08rem;
   line-height: 1.7;
   max-width: 640px;
+  margin-bottom: 16px;
+}
+.hero-copy blockquote {
+  margin: 24px 0 0 0;
+  font-size: 1.1rem;
+  font-style: italic;
+  color: var(--sun);
 }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
 .btn {
@@ -175,6 +182,26 @@ h3 { font-size: 1.08rem; }
 /* ─── About ──────────────────────────────────────────────────────────────── */
 
 .about-section { background: var(--white); }
+.about-content {
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 800px;
+  margin-bottom: 48px;
+}
+.about-content h3 { color: var(--ink); font-size: 1.4rem; margin-top: 32px; margin-bottom: 8px; }
+.about-content h4 { color: var(--ink); font-size: 1.1rem; margin-top: 24px; margin-bottom: 12px; }
+.about-content p { margin-bottom: 16px; }
+.about-content ul { padding-left: 20px; margin-bottom: 24px; }
+.about-content li { margin-bottom: 8px; }
+.about-content blockquote {
+  margin: 32px 0 0 0;
+  padding: 16px 24px;
+  background: var(--paper);
+  border-left: 4px solid var(--leaf);
+  font-style: italic;
+  color: var(--ink);
+}
+
 .about-grid {
   display: grid;
   gap: 16px;
@@ -243,6 +270,73 @@ h3 { font-size: 1.08rem; }
 .card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
 .card-actions .btn { min-height: 40px; padding: 9px 12px; }
 
+/* ─── Gallery ────────────────────────────────────────────────────────────── */
+
+.gallery-section {
+  background: var(--paper);
+}
+.gallery-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+.gallery-card {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+}
+.gallery-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+}
+.gallery-media-wrapper {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: #000;
+  overflow: hidden;
+}
+.gallery-media-wrapper img, .gallery-media-wrapper video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+.gallery-card:hover .gallery-media-wrapper img,
+.gallery-card:hover .gallery-media-wrapper video {
+  transform: scale(1.05);
+}
+.video-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.6);
+  color: white;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  pointer-events: none;
+}
+.gallery-body {
+  padding: 16px;
+  background: white;
+  flex: 1;
+}
+.gallery-body h3 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
 /* ─── Notices ────────────────────────────────────────────────────────────── */
 
 .notices-band {
@@ -299,16 +393,44 @@ h3 { font-size: 1.08rem; }
 }
 .login-card { display: grid; gap: 14px; }
 .login-card p, .login-note, .panel-aside { color: var(--muted); line-height: 1.6; }
+
 .admin-panel { display: grid; gap: 18px; }
-.panel-grid {
-  display: grid;
-  gap: 18px;
-  grid-template-columns: minmax(0, 1fr) 330px;
+
+/* Desktop layout for admin panel */
+@media (min-width: 1041px) {
+  .panel-content {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: minmax(0, 1fr) 330px;
+  }
+  .panel-aside { align-self: start; }
 }
+
+/* Mobile layout for admin panel */
+@media (max-width: 1040px) {
+  .panel-content {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .panel-form { order: 1; }
+  .panel-aside { order: 2; width: 100%; }
+  
+  .tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tab {
+    flex-shrink: 0;
+  }
+}
+
 .panel-form { display: none; }
 .panel-form.active { display: grid; gap: 14px; }
 label { color: var(--muted); display: grid; gap: 7px; font-weight: 700; }
-input, textarea, select {
+input:not([type="file"]), textarea, select {
   background: #fbfcf8;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -317,9 +439,17 @@ input, textarea, select {
   padding: 10px 12px;
   width: 100%;
 }
+.file-input {
+  background: #fbfcf8;
+  border: 1px dashed var(--muted);
+  border-radius: 8px;
+  color: var(--ink);
+  padding: 10px 12px;
+  width: 100%;
+  cursor: pointer;
+}
 textarea { resize: vertical; }
 .split { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.panel-aside { align-self: start; }
 .panel-aside strong { color: var(--ink); word-break: break-word; }
 .toast { color: var(--leaf-dark); font-weight: 800; min-height: 24px; margin-top: 8px; }
 .records.active { display: block; }
@@ -340,6 +470,9 @@ textarea { resize: vertical; }
   font-weight: 800;
   height: 36px;
   padding: 0 10px;
+}
+.media-preview {
+  margin-top: 8px;
 }
 
 /* ─── Site Settings panel ─────────────────────────────────────────────────── */
@@ -384,7 +517,7 @@ textarea { resize: vertical; }
   object-fit: cover;
   border-radius: 8px;
 }
-.settings-upload-area { flex: 1; display: grid; gap: 8px; }
+.settings-upload-area { flex: 1; display: grid; gap: 8px; min-width: 200px; }
 .upload-label {
   display: inline-flex;
   align-items: center;
@@ -408,9 +541,9 @@ textarea { resize: vertical; }
   pointer-events: none;
 }
 .file-hint { color: var(--muted); font-size: 0.83rem; margin: 0; font-weight: 400; }
-.settings-block .btn { min-height: 40px; padding: 9px 14px; margin-right: 8px; }
+.settings-block .btn { min-height: 40px; padding: 9px 14px; margin-right: 8px; margin-bottom: 8px; }
 
-/* ─── Event dialog ───────────────────────────────────────────────────────── */
+/* ─── Dialogs ────────────────────────────────────────────────────────────── */
 
 dialog {
   border: 0;
@@ -420,7 +553,7 @@ dialog {
   padding: 0;
   width: min(calc(100% - 28px), 760px);
 }
-dialog::backdrop { background: rgba(23, 49, 42, 0.52); }
+dialog::backdrop { background: rgba(23, 49, 42, 0.6); backdrop-filter: blur(4px); }
 .dialog-close {
   background: var(--ink);
   border: 0;
@@ -435,6 +568,7 @@ dialog::backdrop { background: rgba(23, 49, 42, 0.52); }
   right: 14px;
   top: 14px;
   width: 36px;
+  z-index: 100;
 }
 .details img { aspect-ratio: 16 / 8; object-fit: cover; width: 100%; }
 .details-body { padding: 24px; }
@@ -490,6 +624,30 @@ dialog::backdrop { background: rgba(23, 49, 42, 0.52); }
   background: #525659;
 }
 
+/* ─── Gallery dialog ─────────────────────────────────────────────────────── */
+
+.gallery-dialog {
+  max-width: min(96vw, 1200px);
+  width: min(96vw, 1200px);
+  background: transparent;
+  box-shadow: none;
+}
+.gallery-dialog-close {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(8px);
+}
+.gallery-dialog-close:hover {
+  background: rgba(255,255,255,0.4);
+}
+#galleryDialogContent {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+}
+
 /* ─── Footer ─────────────────────────────────────────────────────────────── */
 
 .site-footer {
@@ -505,7 +663,7 @@ dialog::backdrop { background: rgba(23, 49, 42, 0.52); }
 .site-footer strong, .site-footer h3 { color: white; }
 .site-footer h3 { margin-bottom: 12px; }
 .site-footer a, .site-footer span { display: block; margin: 8px 0; }
-.site-footer small { color: rgba(255, 255, 255, 0.66); max-width: 320px; }
+.site-footer small { color: rgba(255, 255, 255, 0.66); display: block; margin-top: 4px; max-width: 320px; line-height: 1.5; }
 
 /* ─── Mobile hamburger ───────────────────────────────────────────────────── */
 
@@ -521,11 +679,10 @@ dialog::backdrop { background: rgba(23, 49, 42, 0.52); }
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
 
 @media (max-width: 1040px) {
-  .hero, .panel-grid, .login-grid { grid-template-columns: 1fr; }
+  .hero, .login-grid { grid-template-columns: 1fr; }
   .hero-panel { align-self: stretch; grid-template-columns: repeat(3, 1fr); }
   .about-grid, .event-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .site-footer { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .settings-preview-row { flex-direction: row; }
 }
 
 @media (max-width: 768px) {
@@ -565,5 +722,4 @@ dialog::backdrop { background: rgba(23, 49, 42, 0.52); }
   h1 { font-size: 2.2rem; }
   .hero-actions { flex-direction: column; }
   .hero-actions .btn { width: 100%; }
-  .settings-preview-row { flex-direction: column; }
 }

@@ -36,6 +36,7 @@ function makeToken(username) {
 }
 
 function verifyToken(token) {
+  if (!token) return false;
   const parts = token.split(".");
   if (parts.length !== 3) return false;
   const payload = `${parts[0]}.${parts[1]}`;
@@ -75,6 +76,19 @@ async function listNotices() {
   return data || [];
 }
 
+async function listGallery() {
+  // If gallery table doesn't exist yet, this will fail gracefully
+  try {
+    const { data } = await getSupabaseAdmin()
+      .from("gallery")
+      .select("*")
+      .order("created_at", { ascending: false });
+    return data || [];
+  } catch (err) {
+    return [];
+  }
+}
+
 async function getSettings() {
   try {
     const { data } = await getSupabaseAdmin().from("site_settings").select("key, value");
@@ -92,7 +106,7 @@ async function getSettings() {
   }
 }
 
-// ─── Read raw body ────────────────────────────────────────────────────────────
+// ─── Read body (Vercel auto-parses JSON, streaming needed for multipart) ────
 function readRawBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -102,10 +116,14 @@ function readRawBody(req) {
   });
 }
 
-function readBody(req) {
-  return readRawBody(req).then(buf => {
-    try { return JSON.parse(buf.toString("utf8") || "{}"); } catch { return {}; }
-  });
+async function readBody(req) {
+  // Vercel auto-parses application/json into req.body
+  if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+    return req.body;
+  }
+  // Fallback for local testing or empty body
+  const buf = await readRawBody(req);
+  try { return JSON.parse(buf.toString("utf8") || "{}"); } catch { return {}; }
 }
 
 // ─── Parse multipart form data ────────────────────────────────────────────────
@@ -142,7 +160,7 @@ async function parseMultipart(req) {
 // ─── Upload file to Supabase Storage ─────────────────────────────────────────
 async function uploadToStorage(fileBuffer, filename, contentType) {
   const ext = filename.split(".").pop().toLowerCase();
-  const safeExt = ["jpg", "jpeg", "png", "gif", "webp", "svg", "pdf"].includes(ext) ? ext : "bin";
+  const safeExt = ["jpg", "jpeg", "png", "gif", "webp", "svg", "pdf", "mp4", "webm"].includes(ext) ? ext : "bin";
   const uniqueName = `${Date.now()}-${randomUUID()}.${safeExt}`;
 
   const supabase = getSupabaseAdmin();
@@ -181,30 +199,27 @@ export default async function handler(req, res) {
   try {
     // Public endpoints
     if (req.method === "GET" && pathname === "/api/site") {
-      const [events, notices, settings] = await Promise.all([listEvents(), listNotices(), getSettings()]);
-      return json(res, { events, notices, settings, stats: { events: events.length, notices: notices.length } });
+      const [events, notices, settings, gallery] = await Promise.all([listEvents(), listNotices(), getSettings(), listGallery()]);
+      return json(res, { events, notices, settings, gallery, stats: { events: events.length, notices: notices.length, gallery: gallery.length } });
     }
     if (req.method === "GET" && pathname === "/api/events")   return json(res, await listEvents());
     if (req.method === "GET" && pathname === "/api/notices")  return json(res, await listNotices());
+    if (req.method === "GET" && pathname === "/api/gallery")  return json(res, await listGallery());
     if (req.method === "GET" && pathname === "/api/settings") return json(res, await getSettings());
 
     // Debug endpoint
     if (req.method === "GET" && pathname === "/api/debug") {
       return json(res, {
         ADMIN_USER,
-        ADMIN_PASSWORD,
-        ADMIN_USER_LEN: ADMIN_USER.length,
         ADMIN_PASSWORD_LEN: ADMIN_PASSWORD.length,
         SUPABASE_URL: process.env.SUPABASE_URL || "not set",
         env_keys: Object.keys(process.env).filter(k => k.startsWith("ADMIN") || k.startsWith("SUPA"))
       });
     }
+
     // Admin login
     if (req.method === "POST" && pathname === "/api/admin/login") {
       const data = await readBody(req);
-      console.log("[LOGIN] body_username:", JSON.stringify(data.username), "body_password:", JSON.stringify(data.password));
-      console.log("[LOGIN] ADMIN_USER:", JSON.stringify(ADMIN_USER), "ADMIN_PASSWORD:", JSON.stringify(ADMIN_PASSWORD));
-      console.log("[LOGIN] match:", data.username === ADMIN_USER, data.password === ADMIN_PASSWORD);
       if (data.username === ADMIN_USER && data.password === ADMIN_PASSWORD) {
         const token = makeToken(ADMIN_USER);
         return json(res, { ok: true, user: ADMIN_USER }, 200, {
@@ -223,8 +238,8 @@ export default async function handler(req, res) {
     if (req.method === "GET" && pathname === "/api/dashboard") {
       const authErr = requireAdmin(req);
       if (authErr) return json(res, authErr, 401);
-      const [events, notices, settings] = await Promise.all([listEvents(), listNotices(), getSettings()]);
-      return json(res, { events, notices, settings, stats: { events: events.length, notices: notices.length } });
+      const [events, notices, settings, gallery] = await Promise.all([listEvents(), listNotices(), getSettings(), listGallery()]);
+      return json(res, { events, notices, settings, gallery, stats: { events: events.length, notices: notices.length, gallery: gallery.length } });
     }
 
     // File upload → Supabase Storage
@@ -270,6 +285,19 @@ export default async function handler(req, res) {
       return json(res, { ok: true, notices: await listNotices() }, 201);
     }
 
+    // Add gallery
+    if (req.method === "POST" && pathname === "/api/gallery") {
+      const authErr = requireAdmin(req);
+      if (authErr) return json(res, authErr, 401);
+      const data = await readBody(req);
+      const { error } = await getSupabaseAdmin().from("gallery").insert({
+        title: data.title, description: data.description || "",
+        media_url: data.media_url, media_type: data.media_type || "image"
+      });
+      if (error) throw error;
+      return json(res, { ok: true, gallery: await listGallery() }, 201);
+    }
+
     // Update settings
     if (req.method === "POST" && pathname === "/api/settings") {
       const authErr = requireAdmin(req);
@@ -301,6 +329,16 @@ export default async function handler(req, res) {
       const { error } = await getSupabaseAdmin().from("notices").delete().eq("id", id);
       if (error) throw error;
       return json(res, { ok: true, notices: await listNotices() });
+    }
+
+    // Delete gallery item
+    if (req.method === "DELETE" && pathname.startsWith("/api/gallery/")) {
+      const authErr = requireAdmin(req);
+      if (authErr) return json(res, authErr, 401);
+      const id = pathname.split("/").pop();
+      const { error } = await getSupabaseAdmin().from("gallery").delete().eq("id", id);
+      if (error) throw error;
+      return json(res, { ok: true, gallery: await listGallery() });
     }
 
     return json(res, { error: "Not found" }, 404);
