@@ -118,9 +118,15 @@ function readRawBody(req) {
 
 async function readBody(req) {
   // Vercel auto-parses application/json into req.body
-  if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
-    return req.body;
+  if (req.body !== undefined) {
+    if (typeof req.body === 'string') {
+      try { return JSON.parse(req.body); } catch { return {}; }
+    }
+    if (typeof req.body === 'object' && req.body !== null) {
+      return req.body;
+    }
   }
+  
   // Fallback for local testing or empty body
   const buf = await readRawBody(req);
   try { return JSON.parse(buf.toString("utf8") || "{}"); } catch { return {}; }
