@@ -5,6 +5,7 @@ let state = {
   events: [],
   notices: [],
   gallery: [],
+  team: [],
   settings: {},
   filter: "All",
   adminUser: null
@@ -51,10 +52,12 @@ async function refreshPublic() {
     state.events = data.events || [];
     state.notices = data.notices || [];
     state.gallery = data.gallery || [];
+    state.team = data.team || [];
     applySettings(data.settings);
     renderEvents();
     renderNotices();
     renderGallery();
+    renderTeam();
     updateCounts();
   } catch (error) {
     console.error("Failed to load public data:", error);
@@ -67,10 +70,12 @@ async function refreshAdmin() {
     state.events = data.events || [];
     state.notices = data.notices || [];
     state.gallery = data.gallery || [];
+    state.team = data.team || [];
     applySettings(data.settings);
     renderEvents();
     renderNotices();
     renderGallery();
+    renderTeam();
     renderRecords();
     updateCounts();
   } catch (error) {
@@ -238,6 +243,26 @@ function renderGallery() {
   }).join("");
 }
 
+function renderTeam() {
+  const grid = $("#teamGrid");
+  if (!grid) return;
+  if (!state.team || !state.team.length) {
+    grid.innerHTML = `<p style="grid-column: 1/-1; color: var(--muted);">No position holders added yet.</p>`;
+    return;
+  }
+
+  grid.innerHTML = state.team.map((t) => `
+    <article class="team-card">
+      <img src="${t.photo_url}" alt="${t.name}" loading="lazy">
+      <div class="team-body">
+        <h3>${t.name}</h3>
+        <p class="team-position">${t.position}</p>
+        ${t.description ? `<p class="team-desc">${t.description}</p>` : ''}
+      </div>
+    </article>
+  `).join("");
+}
+
 function renderRecords() {
   const list = $("#recordList");
   if (!list) return;
@@ -282,6 +307,21 @@ function renderRecords() {
             <p>${g.media_type}</p>
           </div>
           <button class="delete-btn" data-delete-gallery="${g.id}">Delete</button>
+        </div>
+      `;
+    });
+  }
+
+  html += `<h4 style="margin-top:24px">Position Holders</h4>`;
+  if (state.team) {
+    state.team.forEach((t) => {
+      html += `
+        <div class="record-row">
+          <div>
+            <strong>${t.name}</strong>
+            <p>${t.position}</p>
+          </div>
+          <button class="delete-btn" data-delete-team="${t.id}">Delete</button>
         </div>
       `;
     });
@@ -639,6 +679,14 @@ function bindUi() {
       showToast("Gallery item deleted.");
       return;
     }
+    
+    const teamDelete = event.target.closest("[data-delete-team]");
+    if (teamDelete && confirm("Delete this official?")) {
+      await api(`/api/team/${teamDelete.dataset.deleteTeam}`, { method: "DELETE" });
+      await refreshAdmin();
+      showToast("Official deleted.");
+      return;
+    }
   });
 
   // Close dialogs
@@ -771,6 +819,39 @@ function bindUi() {
       btn.disabled = false;
     }
   });
+
+  // Add team form
+  $("#teamForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const btn = form.querySelector("button[type=submit]");
+    btn.textContent = "Saving…";
+    btn.disabled = true;
+    try {
+      const data = Object.fromEntries(new FormData(form).entries());
+      const photoFile = form.elements.photo?.files[0];
+      
+      if (photoFile && photoFile.size > 0) {
+        data.photo_url = await uploadFile(photoFile);
+      }
+      delete data.photo;
+      
+      await api("/api/team", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      form.reset();
+      $("#teamPhotoPreview").classList.add("hidden");
+      await refreshAdmin();
+      showToast("Official saved.");
+    } catch (err) {
+      showToast("Error: " + err.message);
+    } finally {
+      btn.textContent = "Save Official";
+      btn.disabled = false;
+    }
+  });
   
   // Gallery media preview
   const mediaInput = $("#galleryForm input[name='media']");
@@ -790,6 +871,23 @@ function bindUi() {
         mediaPreview.innerHTML = `<img src="${url}" style="width:100%; max-height:200px; object-fit:contain; border-radius: 8px;">`;
       }
       mediaPreview.classList.remove("hidden");
+    });
+  }
+
+  // Team photo preview
+  const photoInput = $("#teamForm input[name='photo']");
+  const photoPreview = $("#teamPhotoPreview");
+  if (photoInput && photoPreview) {
+    photoInput.addEventListener("change", () => {
+      const file = photoInput.files[0];
+      if (!file) {
+        photoPreview.classList.add("hidden");
+        return;
+      }
+      
+      const url = URL.createObjectURL(file);
+      photoPreview.innerHTML = `<img src="${url}" style="width:100px; height:100px; object-fit:cover; border-radius: 50%;">`;
+      photoPreview.classList.remove("hidden");
     });
   }
 

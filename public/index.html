@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>YogaDham | Events, Notices and Sessions</title>
     <meta name="description" content="YogaDham brings together yoga classes, pranayama, meditation, health awareness programs, camps, teacher sessions and community announcements in one trusted place." />
+    <link rel="icon" href="https://friqnynefxrbsqktekbs.supabase.co/storage/v1/object/public/uploads/1781435899099-30b164bc-3e4a-47e1-9c18-27f0240e857a.jpeg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Serif:wght@700&display=swap" rel="stylesheet">
@@ -31,6 +32,7 @@
         <a href="#home" data-route="home">Home</a>
         <a href="#about" data-route="about">About</a>
         <a href="#events" data-route="events">Events</a>
+        <a href="#team" data-route="team">Our Team</a>
         <a href="#gallery" data-route="gallery">Gallery</a>
         <a href="#notices" data-route="notices">Notices</a>
         <a href="#contact" data-route="contact">Contact</a>
@@ -131,6 +133,18 @@
         <div id="eventGrid" class="event-grid"></div>
       </section>
 
+      <!-- ── OFFICIAL POSITION HOLDERS ── -->
+      <section id="team" class="section team-section page-view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Leadership</p>
+            <h2>Official Position Holders</h2>
+          </div>
+          <p class="section-intro">Meet the dedicated leaders and officials guiding YogaDham towards its vision of health and harmony.</p>
+        </div>
+        <div id="teamGrid" class="team-grid"></div>
+      </section>
+
       <!-- ── GALLERY ── -->
       <section id="gallery" class="section gallery-section page-view">
         <div class="section-head">
@@ -204,6 +218,7 @@
           <div class="tabs" role="tablist" aria-label="Panel tabs">
             <button class="tab active" data-tab="eventForm">Add Event</button>
             <button class="tab" data-tab="noticeForm">Add Notice</button>
+            <button class="tab" data-tab="teamForm">Add Official</button>
             <button class="tab" data-tab="galleryForm">Add Gallery</button>
             <button class="tab" data-tab="siteSettings">Settings</button>
             <button class="tab" data-tab="records">Records</button>
@@ -262,6 +277,22 @@
               <label>Summary<textarea name="summary" required rows="4" placeholder="Notice details"></textarea></label>
               <label>Notice PDF<input name="pdf" type="file" accept="application/pdf" class="file-input"></label>
               <button class="btn primary" type="submit">Save Notice</button>
+            </form>
+
+            <!-- Add Team Official form -->
+            <form id="teamForm" class="panel-form">
+              <h3>Add Official Position Holder</h3>
+              <div class="split">
+                <label>Name<input name="name" required placeholder="Dr. John Doe"></label>
+                <label>Position<input name="position" required placeholder="President"></label>
+              </div>
+              <label>Description (Optional)<textarea name="description" rows="2" placeholder="Brief background or responsibilities"></textarea></label>
+              <div class="split">
+                <label>Display Order<input name="display_order" type="number" value="1" required></label>
+                <label>Photo<input name="photo" type="file" accept="image/*" class="file-input" required></label>
+              </div>
+              <div id="teamPhotoPreview" class="media-preview hidden"></div>
+              <button class="btn primary" type="submit">Save Official</button>
             </form>
 
             <!-- Add Gallery form -->

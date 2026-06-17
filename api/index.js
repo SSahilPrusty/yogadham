@@ -76,6 +76,19 @@ async function listNotices() {
   return data || [];
 }
 
+async function listTeam() {
+  try {
+    const { data } = await getSupabaseAdmin()
+      .from("position_holders")
+      .select("*")
+      .order("display_order", { ascending: true })
+      .order("id", { ascending: true });
+    return data || [];
+  } catch (err) {
+    return [];
+  }
+}
+
 async function listGallery() {
   // If gallery table doesn't exist yet, this will fail gracefully
   try {
@@ -205,12 +218,13 @@ export default async function handler(req, res) {
   try {
     // Public endpoints
     if (req.method === "GET" && pathname === "/api/site") {
-      const [events, notices, settings, gallery] = await Promise.all([listEvents(), listNotices(), getSettings(), listGallery()]);
-      return json(res, { events, notices, settings, gallery, stats: { events: events.length, notices: notices.length, gallery: gallery.length } });
+      const [events, notices, settings, gallery, team] = await Promise.all([listEvents(), listNotices(), getSettings(), listGallery(), listTeam()]);
+      return json(res, { events, notices, settings, gallery, team, stats: { events: events.length, notices: notices.length, gallery: gallery.length, team: team.length } });
     }
     if (req.method === "GET" && pathname === "/api/events")   return json(res, await listEvents());
     if (req.method === "GET" && pathname === "/api/notices")  return json(res, await listNotices());
     if (req.method === "GET" && pathname === "/api/gallery")  return json(res, await listGallery());
+    if (req.method === "GET" && pathname === "/api/team")     return json(res, await listTeam());
     if (req.method === "GET" && pathname === "/api/settings") return json(res, await getSettings());
 
     // Debug endpoint
@@ -246,8 +260,8 @@ export default async function handler(req, res) {
     if (req.method === "GET" && pathname === "/api/dashboard") {
       const authErr = requireAdmin(req);
       if (authErr) return json(res, authErr, 401);
-      const [events, notices, settings, gallery] = await Promise.all([listEvents(), listNotices(), getSettings(), listGallery()]);
-      return json(res, { events, notices, settings, gallery, stats: { events: events.length, notices: notices.length, gallery: gallery.length } });
+      const [events, notices, settings, gallery, team] = await Promise.all([listEvents(), listNotices(), getSettings(), listGallery(), listTeam()]);
+      return json(res, { events, notices, settings, gallery, team, stats: { events: events.length, notices: notices.length, gallery: gallery.length, team: team.length } });
     }
 
     // File upload → Supabase Storage
@@ -306,6 +320,21 @@ export default async function handler(req, res) {
       return json(res, { ok: true, gallery: await listGallery() }, 201);
     }
 
+    // Add team official
+    if (req.method === "POST" && pathname === "/api/team") {
+      const authErr = requireAdmin(req);
+      if (authErr) return json(res, authErr, 401);
+      const data = await readBody(req);
+      const { error } = await getSupabaseAdmin().from("position_holders").insert({
+        name: data.name, position: data.position,
+        description: data.description || "",
+        photo_url: data.photo_url || "",
+        display_order: parseInt(data.display_order, 10) || 1
+      });
+      if (error) throw error;
+      return json(res, { ok: true, team: await listTeam() }, 201);
+    }
+
     // Update settings
     if (req.method === "POST" && pathname === "/api/settings") {
       const authErr = requireAdmin(req);
@@ -347,6 +376,16 @@ export default async function handler(req, res) {
       const { error } = await getSupabaseAdmin().from("gallery").delete().eq("id", id);
       if (error) throw error;
       return json(res, { ok: true, gallery: await listGallery() });
+    }
+
+    // Delete team official
+    if (req.method === "DELETE" && pathname.startsWith("/api/team/")) {
+      const authErr = requireAdmin(req);
+      if (authErr) return json(res, authErr, 401);
+      const id = pathname.split("/").pop();
+      const { error } = await getSupabaseAdmin().from("position_holders").delete().eq("id", id);
+      if (error) throw error;
+      return json(res, { ok: true, team: await listTeam() });
     }
 
     return json(res, { error: "Not found" }, 404);
