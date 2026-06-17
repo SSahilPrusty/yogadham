@@ -54,7 +54,11 @@ function cookieValue(req, name) {
 }
 
 function requireAdmin(req) {
-  const token = cookieValue(req, "yd_admin");
+  let token = cookieValue(req, "yd_admin");
+  const authHeader = req.headers["authorization"] || "";
+  if (authHeader.startsWith("Bearer ")) {
+    token = authHeader.substring(7);
+  }
   return token && verifyToken(token) ? null : { error: "Admin login required" };
 }
 
@@ -244,7 +248,7 @@ export default async function handler(req, res) {
       const pass = (data.password || "").trim();
       if (user === ADMIN_USER && pass === ADMIN_PASSWORD) {
         const token = makeToken(ADMIN_USER);
-        return json(res, { ok: true, user: ADMIN_USER }, 200, {
+        return json(res, { ok: true, user: ADMIN_USER, token: token }, 200, {
           "Set-Cookie": `yd_admin=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=28800`
         });
       }

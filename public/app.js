@@ -17,6 +17,11 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 
 async function api(url, options = {}) {
+  const token = localStorage.getItem("yd_token");
+  if (token) {
+    options.headers = options.headers || {};
+    options.headers["Authorization"] = `Bearer ${token}`;
+  }
   const res = await fetch(url, options);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP error ${res.status}`);
@@ -103,6 +108,11 @@ async function login(form) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
+    
+    // Store token and user
+    if (data.token) localStorage.setItem("yd_token", data.token);
+    if (data.user) localStorage.setItem("yd_adminUser", data.user);
+    
     state.adminUser = data.user;
     form.reset();
     await refreshAdmin();
@@ -115,7 +125,9 @@ async function login(form) {
 }
 
 async function logout() {
-  await api("/api/admin/logout", { method: "POST" });
+  await api("/api/admin/logout", { method: "POST" }).catch(()=>null);
+  localStorage.removeItem("yd_token");
+  localStorage.removeItem("yd_adminUser");
   state.adminUser = null;
   renderAdminState();
 }
@@ -901,6 +913,9 @@ const closeAllDialogs = () => {
 };
 closeAllDialogs();
 document.addEventListener("DOMContentLoaded", closeAllDialogs);
+
+// Restore user state from local storage on load
+state.adminUser = localStorage.getItem("yd_adminUser") || null;
 
 applyHeroUrl(DEFAULT_HERO);
 bindUi();
