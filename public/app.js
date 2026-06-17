@@ -803,27 +803,72 @@ function bindUi() {
     btn.textContent = "Uploading…";
     btn.disabled = true;
     try {
-      const data = Object.fromEntries(new FormData(form).entries());
-      const mediaFile = form.elements.media?.files[0];
+      const title = form.elements.title.value;
+      const description = form.elements.description.value;
       
-      if (!mediaFile || mediaFile.size === 0) {
-        throw new Error("Please select a photo or video");
+      const photoFiles = Array.from(form.elements.photos?.files || []);
+      const videoFile = form.elements.video?.files[0];
+      
+      if (photoFiles.length === 0 && (!videoFile || videoFile.size === 0)) {
+        throw new Error("Please select at least one photo or a video.");
       }
       
-      const isVideo = mediaFile.type.startsWith("video/");
-      data.media_type = isVideo ? "video" : "image";
-      data.media_url = await uploadFile(mediaFile);
-      delete data.media;
+      // Limit video upload size to 4.5MB (due to serverless function upload limitations)
+      const maxVideoSize = 4.5 * 1024 * 1024;
+      if (videoFile && videoFile.size > maxVideoSize) {
+        throw new Error(`Video file is too large (${(videoFile.size / (1024 * 1024)).toFixed(2)} MB). Max limit is 4.5 MB.`);
+      }
+      
+      const uploadPromises = [];
+      const galleryItems = [];
+      
+      // Upload photos in parallel
+      for (const file of photoFiles) {
+        uploadPromises.push((async () => {
+          const url = await uploadFile(file);
+          if (url) {
+            galleryItems.push({
+              title,
+              description,
+              media_url: url,
+              media_type: "image"
+            });
+          }
+        })());
+      }
+      
+      // Upload video
+      if (videoFile && videoFile.size > 0) {
+        uploadPromises.push((async () => {
+          const url = await uploadFile(videoFile);
+          if (url) {
+            galleryItems.push({
+              title,
+              description,
+              media_url: url,
+              media_type: "video"
+            });
+          }
+        })());
+      }
+      
+      await Promise.all(uploadPromises);
+      
+      if (galleryItems.length === 0) {
+        throw new Error("No files were successfully uploaded.");
+      }
       
       await api("/api/gallery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
+        body: JSON.stringify(galleryItems)
       });
+      
       form.reset();
+      $("#galleryMediaPreview").innerHTML = "";
       $("#galleryMediaPreview").classList.add("hidden");
       await refreshAdmin();
-      showToast("Gallery item uploaded.");
+      showToast("Gallery items uploaded successfully.");
     } catch (err) {
       showToast("Error: " + err.message);
     } finally {
@@ -866,25 +911,73 @@ function bindUi() {
   });
   
   // Gallery media preview
-  const mediaInput = $("#galleryForm input[name='media']");
+  const photosInput = $("#galleryForm input[name='photos']");
+  const videoInput = $("#galleryForm input[name='video']");
   const mediaPreview = $("#galleryMediaPreview");
-  if (mediaInput && mediaPreview) {
-    mediaInput.addEventListener("change", () => {
-      const file = mediaInput.files[0];
-      if (!file) {
-        mediaPreview.classList.add("hidden");
-        return;
-      }
-      
+  
+  function updateGalleryPreview() {
+    if (!mediaPreview) return;
+    mediaPreview.innerHTML = "";
+    
+    const photos = Array.from(photosInput?.files || []);
+    const video = videoInput?.files?.[0];
+    
+    if (photos.length === 0 && !video) {
+      mediaPreview.classList.add("hidden");
+      return;
+    }
+    
+    photos.forEach(file => {
       const url = URL.createObjectURL(file);
-      if (file.type.startsWith("video/")) {
-        mediaPreview.innerHTML = `<video src="${url}" controls style="width:100%; max-height:200px; border-radius: 8px;"></video>`;
-      } else {
-        mediaPreview.innerHTML = `<img src="${url}" style="width:100%; max-height:200px; object-fit:contain; border-radius: 8px;">`;
-      }
-      mediaPreview.classList.remove("hidden");
+      const img = document.createElement("img");
+      img.src = url;
+      img.style.width = "80px";
+      img.style.height = "80px";
+      img.style.objectFit = "cover";
+      img.style.borderRadius = "4px";
+      img.style.border = "1px solid var(--line)";
+      mediaPreview.appendChild(img);
     });
+    
+    if (video) {
+      const url = URL.createObjectURL(video);
+      const wrapper = document.createElement("div");
+      wrapper.style.position = "relative";
+      wrapper.style.width = "120px";
+      wrapper.style.height = "80px";
+      wrapper.style.borderRadius = "4px";
+      wrapper.style.overflow = "hidden";
+      wrapper.style.border = "1px solid var(--line)";
+      
+      const vid = document.createElement("video");
+      vid.src = url;
+      vid.style.width = "100%";
+      vid.style.height = "100%";
+      vid.style.objectFit = "cover";
+      vid.muted = true;
+      wrapper.appendChild(vid);
+      
+      const badge = document.createElement("span");
+      badge.textContent = "VIDEO";
+      badge.style.position = "absolute";
+      badge.style.bottom = "2px";
+      badge.style.right = "2px";
+      badge.style.background = "rgba(0,0,0,0.7)";
+      badge.style.color = "white";
+      badge.style.fontSize = "9px";
+      badge.style.padding = "2px 4px";
+      badge.style.borderRadius = "2px";
+      badge.style.fontWeight = "bold";
+      wrapper.appendChild(badge);
+      
+      mediaPreview.appendChild(wrapper);
+    }
+    
+    mediaPreview.classList.remove("hidden");
   }
+  
+  photosInput?.addEventListener("change", updateGalleryPreview);
+  videoInput?.addEventListener("change", updateGalleryPreview);
 
   // Team photo preview
   const photoInput = $("#teamForm input[name='photo']");

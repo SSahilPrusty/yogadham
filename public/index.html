@@ -299,11 +299,19 @@
             <form id="galleryForm" class="panel-form">
               <h3>Add to Gallery</h3>
               <label>Title<input name="title" required placeholder="Yoga Day Celebration 2024"></label>
-              <label>Description<textarea name="description" rows="3" placeholder="Short description of the photo or video"></textarea></label>
-              <label>Photo or Video
-                <input name="media" type="file" accept="image/*,video/*" required class="file-input">
-              </label>
-              <div id="galleryMediaPreview" class="media-preview hidden"></div>
+              <label>Description<textarea name="description" rows="3" placeholder="Short description of the photos / video"></textarea></label>
+              
+              <div class="split" style="gap: 16px;">
+                <label>Photos (Select Multiple)
+                  <input name="photos" type="file" accept="image/*" multiple class="file-input">
+                </label>
+                <label>Video (Select Single)
+                  <span style="font-size: 0.85em; color: var(--muted); font-weight: normal; display: block; margin-top: 2px;">Possible video size limit: 4.5 MB</span>
+                  <input name="video" type="file" accept="video/*" class="file-input" style="margin-top: 4px;">
+                </label>
+              </div>
+              
+              <div id="galleryMediaPreview" class="media-preview hidden" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;"></div>
               <button class="btn primary" type="submit">Upload to Gallery</button>
             </form>
 

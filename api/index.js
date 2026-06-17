@@ -316,10 +316,14 @@ export default async function handler(req, res) {
       const authErr = requireAdmin(req);
       if (authErr) return json(res, authErr, 401);
       const data = await readBody(req);
-      const { error } = await getSupabaseAdmin().from("gallery").insert({
-        title: data.title, description: data.description || "",
-        media_url: data.media_url, media_type: data.media_type || "image"
-      });
+      const items = Array.isArray(data) ? data : [data];
+      const rows = items.map(item => ({
+        title: item.title,
+        description: item.description || "",
+        media_url: item.media_url,
+        media_type: item.media_type || "image"
+      }));
+      const { error } = await getSupabaseAdmin().from("gallery").insert(rows);
       if (error) throw error;
       return json(res, { ok: true, gallery: await listGallery() }, 201);
     }
