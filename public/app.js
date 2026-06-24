@@ -136,7 +136,12 @@ async function logout() {
 
 function applyHeroUrl(url) {
   const hero = $(".hero");
-  if (hero) hero.style.backgroundImage = `linear-gradient(90deg, rgba(23, 49, 42, 0.88), rgba(23, 49, 42, 0.36)), url("${url}")`;
+  if (!hero) return;
+  const isMobile = window.innerWidth <= 768;
+  const grad = isMobile 
+    ? `linear-gradient(180deg, rgba(23, 49, 42, 0.72), rgba(23, 49, 42, 0.9))` 
+    : `linear-gradient(90deg, rgba(23, 49, 42, 0.88), rgba(23, 49, 42, 0.36))`;
+  hero.style.backgroundImage = `${grad}, url("${url}")`;
 }
 
 function applySettings(settings) {
@@ -231,7 +236,7 @@ function renderGallery() {
   const grid = $("#galleryGrid");
   if (!grid) return;
   if (!state.gallery || !state.gallery.length) {
-    grid.innerHTML = `<p style="grid-column: 1/-1; color: var(--muted);">Gallery is empty.</p>`;
+    grid.innerHTML = `<p style="grid-column: 1/-1; color: var(--muted);">No disease solutions added yet.</p>`;
     return;
   }
 
@@ -249,6 +254,7 @@ function renderGallery() {
         </div>
         <div class="gallery-body">
           <h3>${g.title}</h3>
+          ${g.description ? `<p class="gallery-desc">${g.description}</p>` : ''}
         </div>
       </article>
     `;
@@ -309,14 +315,14 @@ function renderRecords() {
     `;
   });
 
-  html += `<h4 style="margin-top:24px">Gallery</h4>`;
+  html += `<h4 style="margin-top:24px">Disease Solution Program</h4>`;
   if (state.gallery) {
     state.gallery.forEach((g) => {
       html += `
         <div class="record-row">
           <div>
             <strong>${g.title}</strong>
-            <p>${g.media_type}</p>
+            <p>${g.description ? g.description.substring(0, 50) + (g.description.length > 50 ? '...' : '') : 'No description'}</p>
           </div>
           <button class="delete-btn" data-delete-gallery="${g.id}">Delete</button>
         </div>
@@ -795,7 +801,7 @@ function bindUi() {
     }
   });
   
-  // Add gallery form
+  // Add gallery form (Disease Solutions)
   $("#galleryForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -805,74 +811,45 @@ function bindUi() {
     try {
       const title = form.elements.title.value;
       const description = form.elements.description.value;
-      
-      const photoFiles = Array.from(form.elements.photos?.files || []);
       const videoFile = form.elements.video?.files[0];
       
-      if (photoFiles.length === 0 && (!videoFile || videoFile.size === 0)) {
-        throw new Error("Please select at least one photo or a video.");
+      if (!videoFile || videoFile.size === 0) {
+        throw new Error("Please select a video file.");
       }
       
       // Limit video upload size to 4.5MB (due to serverless function upload limitations)
       const maxVideoSize = 4.5 * 1024 * 1024;
-      if (videoFile && videoFile.size > maxVideoSize) {
+      if (videoFile.size > maxVideoSize) {
         throw new Error(`Video file is too large (${(videoFile.size / (1024 * 1024)).toFixed(2)} MB). Max limit is 4.5 MB.`);
       }
       
-      const uploadPromises = [];
-      const galleryItems = [];
-      
-      // Upload photos in parallel
-      for (const file of photoFiles) {
-        uploadPromises.push((async () => {
-          const url = await uploadFile(file);
-          if (url) {
-            galleryItems.push({
-              title,
-              description,
-              media_url: url,
-              media_type: "image"
-            });
-          }
-        })());
+      const url = await uploadFile(videoFile);
+      if (!url) {
+        throw new Error("Upload failed. Could not upload the video.");
       }
       
-      // Upload video
-      if (videoFile && videoFile.size > 0) {
-        uploadPromises.push((async () => {
-          const url = await uploadFile(videoFile);
-          if (url) {
-            galleryItems.push({
-              title,
-              description,
-              media_url: url,
-              media_type: "video"
-            });
-          }
-        })());
-      }
-      
-      await Promise.all(uploadPromises);
-      
-      if (galleryItems.length === 0) {
-        throw new Error("No files were successfully uploaded.");
-      }
+      const galleryItem = {
+        title,
+        description,
+        media_url: url,
+        media_type: "video"
+      };
       
       await api("/api/gallery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(galleryItems)
+        body: JSON.stringify(galleryItem)
       });
       
       form.reset();
       $("#galleryMediaPreview").innerHTML = "";
       $("#galleryMediaPreview").classList.add("hidden");
       await refreshAdmin();
-      showToast("Gallery items uploaded successfully.");
+      showToast("Disease solution uploaded successfully.");
     } catch (err) {
       showToast("Error: " + err.message);
     } finally {
-      btn.textContent = "Upload to Gallery";
+      btn.textContent = "Upload Video & Save";
       btn.disabled = false;
     }
   });
@@ -910,8 +887,7 @@ function bindUi() {
     }
   });
   
-  // Gallery media preview
-  const photosInput = $("#galleryForm input[name='photos']");
+  // Gallery media preview (Disease Solutions video preview)
   const videoInput = $("#galleryForm input[name='video']");
   const mediaPreview = $("#galleryMediaPreview");
   
@@ -919,64 +895,34 @@ function bindUi() {
     if (!mediaPreview) return;
     mediaPreview.innerHTML = "";
     
-    const photos = Array.from(photosInput?.files || []);
     const video = videoInput?.files?.[0];
-    
-    if (photos.length === 0 && !video) {
+    if (!video) {
       mediaPreview.classList.add("hidden");
       return;
     }
     
-    photos.forEach(file => {
-      const url = URL.createObjectURL(file);
-      const img = document.createElement("img");
-      img.src = url;
-      img.style.width = "80px";
-      img.style.height = "80px";
-      img.style.objectFit = "cover";
-      img.style.borderRadius = "4px";
-      img.style.border = "1px solid var(--line)";
-      mediaPreview.appendChild(img);
-    });
+    const url = URL.createObjectURL(video);
+    const wrapper = document.createElement("div");
+    wrapper.style.position = "relative";
+    wrapper.style.width = "100%";
+    wrapper.style.maxWidth = "280px";
+    wrapper.style.height = "160px";
+    wrapper.style.borderRadius = "4px";
+    wrapper.style.overflow = "hidden";
+    wrapper.style.border = "1px solid var(--line)";
     
-    if (video) {
-      const url = URL.createObjectURL(video);
-      const wrapper = document.createElement("div");
-      wrapper.style.position = "relative";
-      wrapper.style.width = "120px";
-      wrapper.style.height = "80px";
-      wrapper.style.borderRadius = "4px";
-      wrapper.style.overflow = "hidden";
-      wrapper.style.border = "1px solid var(--line)";
-      
-      const vid = document.createElement("video");
-      vid.src = url;
-      vid.style.width = "100%";
-      vid.style.height = "100%";
-      vid.style.objectFit = "cover";
-      vid.muted = true;
-      wrapper.appendChild(vid);
-      
-      const badge = document.createElement("span");
-      badge.textContent = "VIDEO";
-      badge.style.position = "absolute";
-      badge.style.bottom = "2px";
-      badge.style.right = "2px";
-      badge.style.background = "rgba(0,0,0,0.7)";
-      badge.style.color = "white";
-      badge.style.fontSize = "9px";
-      badge.style.padding = "2px 4px";
-      badge.style.borderRadius = "2px";
-      badge.style.fontWeight = "bold";
-      wrapper.appendChild(badge);
-      
-      mediaPreview.appendChild(wrapper);
-    }
+    const vid = document.createElement("video");
+    vid.src = url;
+    vid.style.width = "100%";
+    vid.style.height = "100%";
+    vid.style.objectFit = "cover";
+    vid.controls = true;
+    wrapper.appendChild(vid);
     
+    mediaPreview.appendChild(wrapper);
     mediaPreview.classList.remove("hidden");
   }
   
-  photosInput?.addEventListener("change", updateGalleryPreview);
   videoInput?.addEventListener("change", updateGalleryPreview);
 
   // Team photo preview
@@ -1011,6 +957,13 @@ document.addEventListener("DOMContentLoaded", closeAllDialogs);
 state.adminUser = localStorage.getItem("yd_adminUser") || null;
 
 applyHeroUrl(DEFAULT_HERO);
+window.addEventListener("resize", () => {
+  if (state.settings && state.settings.hero_url) {
+    applyHeroUrl(state.settings.hero_url);
+  } else {
+    applyHeroUrl(DEFAULT_HERO);
+  }
+});
 bindUi();
 renderAdminState();
 showRoute(routeFromHash());

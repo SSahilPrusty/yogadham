@@ -2,7 +2,10 @@ import { createClient } from "@supabase/supabase-js";
 import { createHmac, timingSafeEqual, randomUUID } from "node:crypto";
 
 // ─── Configuration ────────────────────────────────────────────────────────────
-const ADMIN_USER     = process.env.ADMIN_USER     || "yogisahilprusty@gmail.com";
+const ADMIN_USERS     = [
+  (process.env.ADMIN_USER || "yogisahilprusty@gmail.com").trim().toLowerCase(),
+  "krushnagopaldas@gmail.com"
+];
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "yogadham123";
 const ADMIN_SECRET   = process.env.ADMIN_SECRET   || "yogadham-secret-fallback";
 const SUPABASE_BUCKET = "uploads";
@@ -59,7 +62,19 @@ function requireAdmin(req) {
   if (authHeader.startsWith("Bearer ")) {
     token = authHeader.substring(7);
   }
-  return token && verifyToken(token) ? null : { error: "Admin login required" };
+  if (!token || !verifyToken(token)) {
+    return { error: "Admin login required" };
+  }
+  try {
+    const parts = token.split(".");
+    const username = Buffer.from(parts[0], "base64url").toString("utf8").trim().toLowerCase();
+    if (!ADMIN_USERS.includes(username)) {
+      return { error: "Admin login required" };
+    }
+  } catch (e) {
+    return { error: "Admin login required" };
+  }
+  return null;
 }
 
 async function listEvents() {
@@ -234,7 +249,7 @@ export default async function handler(req, res) {
     // Debug endpoint
     if (req.method === "GET" && pathname === "/api/debug") {
       return json(res, {
-        ADMIN_USER,
+        ADMIN_USERS,
         ADMIN_PASSWORD_LEN: ADMIN_PASSWORD.length,
         SUPABASE_URL: process.env.SUPABASE_URL || "not set",
         env_keys: Object.keys(process.env).filter(k => k.startsWith("ADMIN") || k.startsWith("SUPA"))
@@ -244,15 +259,15 @@ export default async function handler(req, res) {
     // Admin login
     if (req.method === "POST" && pathname === "/api/admin/login") {
       const data = await readBody(req);
-      const user = (data.username || "").trim();
+      const user = (data.username || "").trim().toLowerCase();
       const pass = (data.password || "").trim();
-      if (user === ADMIN_USER && pass === ADMIN_PASSWORD) {
-        const token = makeToken(ADMIN_USER);
-        return json(res, { ok: true, user: ADMIN_USER, token: token }, 200, {
+      if (ADMIN_USERS.includes(user) && pass === ADMIN_PASSWORD) {
+        const token = makeToken(user);
+        return json(res, { ok: true, user: user, token: token }, 200, {
           "Set-Cookie": `yd_admin=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=28800`
         });
       }
-      return json(res, { error: "Invalid admin username or password", received_user: user, expected_user: ADMIN_USER }, 401);
+      return json(res, { error: "Invalid admin username or password", received_user: user, expected_user: ADMIN_USERS.join(" or ") }, 401);
     }
 
     // Admin logout

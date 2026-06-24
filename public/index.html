@@ -33,7 +33,7 @@
         <a href="#about" data-route="about">About</a>
         <a href="#events" data-route="events">Events</a>
         <a href="#team" data-route="team">Our Team</a>
-        <a href="#gallery" data-route="gallery">Gallery</a>
+        <a href="#gallery" data-route="gallery">Disease Solutions</a>
         <a href="#notices" data-route="notices">Notices</a>
         <a href="#contact" data-route="contact">Contact</a>
         <a href="#admin" data-route="admin">Admin</a>
@@ -145,13 +145,14 @@
         <div id="teamGrid" class="team-grid"></div>
       </section>
 
-      <!-- ── GALLERY ── -->
+      <!-- ── DISEASE SOLUTIONS ── -->
       <section id="gallery" class="section gallery-section page-view">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Photo Gallery</p>
-            <h2>Moments from YogaDham</h2>
+            <p class="eyebrow">Ailment Relief</p>
+            <h2>Disease Solution Program</h2>
           </div>
+          <p class="section-intro">Watch short videos by our Gurujis explaining how to address various ailments through specific yoga techniques and solutions.</p>
         </div>
         <div id="galleryGrid" class="gallery-grid"></div>
       </section>
@@ -206,7 +207,7 @@
             <ul>
               <li>Add teacher-led events and sessions.</li>
               <li>Upload event images and PDF documents.</li>
-              <li>Manage photo gallery with uploads.</li>
+              <li>Manage Disease Solution videos.</li>
               <li>Change site logo and hero background.</li>
               <li>Maintain database records from one dashboard.</li>
             </ul>
@@ -219,7 +220,7 @@
             <button class="tab active" data-tab="eventForm">Add Event</button>
             <button class="tab" data-tab="noticeForm">Add Notice</button>
             <button class="tab" data-tab="teamForm">Add Official</button>
-            <button class="tab" data-tab="galleryForm">Add Gallery</button>
+            <button class="tab" data-tab="galleryForm">Add Disease Solution</button>
             <button class="tab" data-tab="siteSettings">Settings</button>
             <button class="tab" data-tab="records">Records</button>
           </div>
@@ -295,24 +296,19 @@
               <button class="btn primary" type="submit">Save Official</button>
             </form>
 
-            <!-- Add Gallery form -->
+            <!-- Add Disease Solution form -->
             <form id="galleryForm" class="panel-form">
-              <h3>Add to Gallery</h3>
-              <label>Title<input name="title" required placeholder="Yoga Day Celebration 2024"></label>
-              <label>Description<textarea name="description" rows="3" placeholder="Short description of the photos / video"></textarea></label>
+              <h3>Add Disease Solution</h3>
+              <label>Ailment Name<input name="title" required placeholder="e.g., Diabetes, Back Pain, Hypertension"></label>
+              <label>Brief Solution Description<textarea name="description" rows="3" required placeholder="Describe the yoga poses, pranayama, and diet tips for relief..."></textarea></label>
               
-              <div class="split" style="gap: 16px;">
-                <label>Photos (Select Multiple)
-                  <input name="photos" type="file" accept="image/*" multiple class="file-input">
-                </label>
-                <label>Video (Select Single)
-                  <span style="font-size: 0.85em; color: var(--muted); font-weight: normal; display: block; margin-top: 2px;">Possible video size limit: 4.5 MB</span>
-                  <input name="video" type="file" accept="video/*" class="file-input" style="margin-top: 4px;">
-                </label>
-              </div>
+              <label>Upload Short Video
+                <span style="font-size: 0.85em; color: var(--muted); font-weight: normal; display: block; margin-top: 2px;">Max video size: 4.5 MB (Vercel Server Limit)</span>
+                <input name="video" type="file" accept="video/*" required class="file-input" style="margin-top: 4px;">
+              </label>
               
               <div id="galleryMediaPreview" class="media-preview hidden" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;"></div>
-              <button class="btn primary" type="submit">Upload to Gallery</button>
+              <button class="btn primary" type="submit">Upload Video & Save</button>
             </form>
 
             <!-- Site Settings form -->
@@ -425,7 +421,7 @@
         <h3>Organisation</h3>
         <a href="#about" data-route-link="about">About YogaDham</a>
         <a href="#events" data-route-link="events">Events</a>
-        <a href="#gallery" data-route-link="gallery">Gallery</a>
+        <a href="#gallery" data-route-link="gallery">Disease Solutions</a>
         <a href="#notices" data-route-link="notices">Notices</a>
       </div>
       <div>
