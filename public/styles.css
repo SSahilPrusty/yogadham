@@ -348,6 +348,21 @@ h3 { font-size: 1.08rem; }
   overflow: hidden;
 }
 
+/* Gallery category section header */
+.gallery-category-section {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--forest, #2a5c45);
+}
+.gallery-category-title {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--forest, #2a5c45);
+  letter-spacing: -0.02em;
+}
+
 /* ─── Team ───────────────────────────────────────────────────────────────── */
 
 .team-section { background: var(--white); }

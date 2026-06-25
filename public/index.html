@@ -33,7 +33,8 @@
         <a href="#about" data-route="about">About</a>
         <a href="#events" data-route="events">Events</a>
         <a href="#team" data-route="team">Our Team</a>
-        <a href="#gallery" data-route="gallery">Disease Solutions</a>
+        <a href="#disease-solutions" data-route="disease-solutions">Disease Solutions</a>
+        <a href="#gallery" data-route="gallery">Gallery</a>
         <a href="#notices" data-route="notices">Notices</a>
         <a href="#contact" data-route="contact">Contact</a>
         <a href="#admin" data-route="admin">Admin</a>
@@ -146,13 +147,28 @@
       </section>
 
       <!-- ── DISEASE SOLUTIONS ── -->
-      <section id="gallery" class="section gallery-section page-view">
+      <section id="disease-solutions" class="section gallery-section page-view">
         <div class="section-head">
           <div>
             <p class="eyebrow">Ailment Relief</p>
             <h2>Disease Solution Program</h2>
           </div>
           <p class="section-intro">Watch short videos by our Gurujis explaining how to address various ailments through specific yoga techniques and solutions.</p>
+        </div>
+        <div id="diseaseSolutionsGrid" class="gallery-grid"></div>
+      </section>
+
+      <!-- ── GALLERY ── -->
+      <section id="gallery" class="section gallery-section page-view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Moments</p>
+            <h2>Photo &amp; Video Gallery</h2>
+          </div>
+          <p class="section-intro">Explore memories, events, workshops, and yoga camps at YogaDham. Filter by event or category below.</p>
+        </div>
+        <div class="filters" role="group" aria-label="Gallery filters" id="galleryFilters" style="margin-bottom: 24px;">
+          <button class="chip gallery-chip active" data-gallery-filter="All">All</button>
         </div>
         <div id="galleryGrid" class="gallery-grid"></div>
       </section>
@@ -220,7 +236,8 @@
             <button class="tab active" data-tab="eventForm">Add Event</button>
             <button class="tab" data-tab="noticeForm">Add Notice</button>
             <button class="tab" data-tab="teamForm">Add Official</button>
-            <button class="tab" data-tab="galleryForm">Add Disease Solution</button>
+            <button class="tab" data-tab="diseaseSolutionsForm">Add Disease Solution</button>
+            <button class="tab" data-tab="galleryForm">Add Gallery</button>
             <button class="tab" data-tab="siteSettings">Settings</button>
             <button class="tab" data-tab="records">Records</button>
           </div>
@@ -252,12 +269,14 @@
               </div>
               <label>Description<textarea name="description" required rows="3" placeholder="Short event details"></textarea></label>
               <div class="split">
-                <label>Event Image
+                <label>Event Image <span style="font-size: 0.85em; color: var(--muted); font-weight: normal;">(Max size: 3 MB)</span>
                   <input name="image" type="file" accept="image/*" class="file-input">
                 </label>
                 <label>WhatsApp Number<input name="whatsapp" required placeholder="919999999999"></label>
               </div>
-              <label>Event PDF<input name="pdf" type="file" accept="application/pdf" class="file-input"></label>
+              <label>Event PDF <span style="font-size: 0.85em; color: var(--muted); font-weight: normal;">(Max size: 4 MB)</span>
+                <input name="pdf" type="file" accept="application/pdf" class="file-input">
+              </label>
               <button class="btn primary" type="submit">Save Event</button>
             </form>
 
@@ -276,7 +295,9 @@
                 <label>Published On<input name="published_on" type="date" required></label>
               </div>
               <label>Summary<textarea name="summary" required rows="4" placeholder="Notice details"></textarea></label>
-              <label>Notice PDF<input name="pdf" type="file" accept="application/pdf" class="file-input"></label>
+              <label>Notice PDF <span style="font-size: 0.85em; color: var(--muted); font-weight: normal;">(Max size: 4 MB)</span>
+                <input name="pdf" type="file" accept="application/pdf" class="file-input">
+              </label>
               <button class="btn primary" type="submit">Save Notice</button>
             </form>
 
@@ -290,25 +311,59 @@
               <label>Description (Optional)<textarea name="description" rows="2" placeholder="Brief background or responsibilities"></textarea></label>
               <div class="split">
                 <label>Display Order<input name="display_order" type="number" value="1" required></label>
-                <label>Photo<input name="photo" type="file" accept="image/*" class="file-input" required></label>
+                <label>Photo <span style="font-size: 0.85em; color: var(--muted); font-weight: normal;">(Max size: 3 MB)</span>
+                  <input name="photo" type="file" accept="image/*" class="file-input" required>
+                </label>
               </div>
               <div id="teamPhotoPreview" class="media-preview hidden"></div>
               <button class="btn primary" type="submit">Save Official</button>
             </form>
 
             <!-- Add Disease Solution form -->
-            <form id="galleryForm" class="panel-form">
+            <form id="diseaseSolutionsForm" class="panel-form">
               <h3>Add Disease Solution</h3>
               <label>Ailment Name<input name="title" required placeholder="e.g., Diabetes, Back Pain, Hypertension"></label>
               <label>Brief Solution Description<textarea name="description" rows="3" required placeholder="Describe the yoga poses, pranayama, and diet tips for relief..."></textarea></label>
               
               <label>Upload Short Video
-                <span style="font-size: 0.85em; color: var(--muted); font-weight: normal; display: block; margin-top: 2px;">Max video size: 4.5 MB (Vercel Server Limit)</span>
+                <span style="font-size: 0.85em; color: var(--muted); font-weight: normal; display: block; margin-top: 2px;">Max video size: 4.5 MB</span>
                 <input name="video" type="file" accept="video/*" required class="file-input" style="margin-top: 4px;">
               </label>
               
-              <div id="galleryMediaPreview" class="media-preview hidden" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;"></div>
+              <div id="diseaseSolutionsMediaPreview" class="media-preview" style="display: none; flex-wrap: wrap; gap: 8px; margin-top: 12px;"></div>
               <button class="btn primary" type="submit">Upload Video & Save</button>
+            </form>
+
+            <!-- Add Gallery form -->
+            <form id="galleryForm" class="panel-form">
+              <h3>Add Gallery Media</h3>
+              <label>Media Title/Caption<input name="title" required placeholder="e.g., Opening ceremony, Yoga Session practice, etc."></label>
+              <label>Description (Optional)<textarea name="description" rows="2" placeholder="Brief caption details..."></textarea></label>
+              
+              <div class="split" style="gap: 16px;">
+                <label>Link to Event
+                  <select name="event_id" id="galleryEventSelect">
+                    <option value="">-- Select Event (Optional) --</option>
+                  </select>
+                </label>
+                <label>Or Enter Custom Category
+                  <input name="custom_category" id="galleryCustomCategory" placeholder="e.g., PDC, Yoga Day">
+                </label>
+              </div>
+
+              <div class="split" style="gap: 16px; margin-top: 12px;">
+                <label>Photos (Select Multiple)
+                  <span style="font-size: 0.85em; color: var(--muted); font-weight: normal; display: block; margin-top: 2px;">Max size: 3 MB per file</span>
+                  <input name="photos" type="file" accept="image/*" multiple class="file-input" style="margin-top: 4px;">
+                </label>
+                <label>Video (Select Single)
+                  <span style="font-size: 0.85em; color: var(--muted); font-weight: normal; display: block; margin-top: 2px;">Max size: 4.5 MB</span>
+                  <input name="video" type="file" accept="video/*" class="file-input" style="margin-top: 4px;">
+                </label>
+              </div>
+
+              <div id="galleryMediaPreview" class="media-preview" style="display: none; flex-wrap: wrap; gap: 8px; margin-top: 12px;"></div>
+              <button class="btn primary" type="submit">Upload to Gallery</button>
             </form>
 
             <!-- Site Settings form -->
@@ -317,7 +372,7 @@
 
               <div class="settings-block">
                 <h4>Organisation Logo</h4>
-                <p class="settings-hint">Upload your logo image (PNG/JPG/SVG). It will appear in the navbar.</p>
+                <p class="settings-hint">Upload your logo image (PNG/JPG/SVG). It will appear in the navbar. Max size: 3 MB.</p>
                 <div class="settings-preview-row">
                   <div class="preview-box" id="logoPreviewBox">
                     <span id="logoPreviewFallback" class="preview-mark">YD</span>
@@ -340,7 +395,7 @@
 
               <div class="settings-block">
                 <h4>Hero Background Photo</h4>
-                <p class="settings-hint">Upload a wide landscape photo for the homepage hero section background.</p>
+                <p class="settings-hint">Upload a wide landscape photo for the homepage hero section background. Max size: 3 MB.</p>
                 <div class="settings-preview-row">
                   <div class="preview-box hero-preview-box">
                     <img id="heroPreview" alt="Hero preview">
@@ -421,7 +476,8 @@
         <h3>Organisation</h3>
         <a href="#about" data-route-link="about">About YogaDham</a>
         <a href="#events" data-route-link="events">Events</a>
-        <a href="#gallery" data-route-link="gallery">Disease Solutions</a>
+        <a href="#disease-solutions" data-route-link="disease-solutions">Disease Solutions</a>
+        <a href="#gallery" data-route-link="gallery">Gallery</a>
         <a href="#notices" data-route-link="notices">Notices</a>
       </div>
       <div>

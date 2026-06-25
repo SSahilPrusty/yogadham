@@ -1,3 +1,9 @@
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 import { createClient } from "@supabase/supabase-js";
 import { createHmac, timingSafeEqual, randomUUID } from "node:crypto";
 
@@ -113,6 +119,18 @@ async function listGallery() {
   try {
     const { data } = await getSupabaseAdmin()
       .from("gallery")
+      .select("*")
+      .order("created_at", { ascending: false });
+    return data || [];
+  } catch (err) {
+    return [];
+  }
+}
+
+async function listDiseaseSolutions() {
+  try {
+    const { data } = await getSupabaseAdmin()
+      .from("disease_solutions")
       .select("*")
       .order("created_at", { ascending: false });
     return data || [];
@@ -237,14 +255,15 @@ export default async function handler(req, res) {
   try {
     // Public endpoints
     if (req.method === "GET" && pathname === "/api/site") {
-      const [events, notices, settings, gallery, team] = await Promise.all([listEvents(), listNotices(), getSettings(), listGallery(), listTeam()]);
-      return json(res, { events, notices, settings, gallery, team, stats: { events: events.length, notices: notices.length, gallery: gallery.length, team: team.length } });
+      const [events, notices, settings, gallery, team, disease_solutions] = await Promise.all([listEvents(), listNotices(), getSettings(), listGallery(), listTeam(), listDiseaseSolutions()]);
+      return json(res, { events, notices, settings, gallery, team, disease_solutions, stats: { events: events.length, notices: notices.length, gallery: gallery.length, team: team.length, disease_solutions: disease_solutions.length } });
     }
-    if (req.method === "GET" && pathname === "/api/events")   return json(res, await listEvents());
-    if (req.method === "GET" && pathname === "/api/notices")  return json(res, await listNotices());
-    if (req.method === "GET" && pathname === "/api/gallery")  return json(res, await listGallery());
-    if (req.method === "GET" && pathname === "/api/team")     return json(res, await listTeam());
-    if (req.method === "GET" && pathname === "/api/settings") return json(res, await getSettings());
+    if (req.method === "GET" && pathname === "/api/events")            return json(res, await listEvents());
+    if (req.method === "GET" && pathname === "/api/notices")           return json(res, await listNotices());
+    if (req.method === "GET" && pathname === "/api/gallery")           return json(res, await listGallery());
+    if (req.method === "GET" && pathname === "/api/disease-solutions") return json(res, await listDiseaseSolutions());
+    if (req.method === "GET" && pathname === "/api/team")              return json(res, await listTeam());
+    if (req.method === "GET" && pathname === "/api/settings")          return json(res, await getSettings());
 
     // Debug endpoint
     if (req.method === "GET" && pathname === "/api/debug") {
@@ -279,17 +298,27 @@ export default async function handler(req, res) {
     if (req.method === "GET" && pathname === "/api/dashboard") {
       const authErr = requireAdmin(req);
       if (authErr) return json(res, authErr, 401);
-      const [events, notices, settings, gallery, team] = await Promise.all([listEvents(), listNotices(), getSettings(), listGallery(), listTeam()]);
-      return json(res, { events, notices, settings, gallery, team, stats: { events: events.length, notices: notices.length, gallery: gallery.length, team: team.length } });
+      const [events, notices, settings, gallery, team, disease_solutions] = await Promise.all([listEvents(), listNotices(), getSettings(), listGallery(), listTeam(), listDiseaseSolutions()]);
+      return json(res, { events, notices, settings, gallery, team, disease_solutions, stats: { events: events.length, notices: notices.length, gallery: gallery.length, team: team.length, disease_solutions: disease_solutions.length } });
     }
 
-    // File upload → Supabase Storage
+    // File upload → Supabase Storage (with size limits check)
     if (req.method === "POST" && pathname === "/api/upload") {
       const authErr = requireAdmin(req);
       if (authErr) return json(res, authErr, 401);
       const { files } = await parseMultipart(req);
       const result = {};
       for (const [field, file] of Object.entries(files)) {
+        const size = file.buffer.length;
+        const isVideo = file.contentType.startsWith("video/") || file.filename.endsWith(".mp4") || file.filename.endsWith(".webm");
+        const isPdf = file.contentType === "application/pdf" || file.filename.endsWith(".pdf");
+        
+        const limit = isVideo ? 4.5 * 1024 * 1024 : (isPdf ? 4 * 1024 * 1024 : 3 * 1024 * 1024);
+        const limitText = isVideo ? "4.5 MB" : (isPdf ? "4 MB" : "3 MB");
+        
+        if (size > limit) {
+          return json(res, { error: `Upload failed: File '${file.filename}' exceeds the size limit of ${limitText}.` }, 400);
+        }
         result[field] = await uploadToStorage(file.buffer, file.filename, file.contentType);
       }
       return json(res, { ok: true, files: result }, 201);
@@ -326,7 +355,7 @@ export default async function handler(req, res) {
       return json(res, { ok: true, notices: await listNotices() }, 201);
     }
 
-    // Add gallery
+    // Add gallery (supports event mapping and custom categories)
     if (req.method === "POST" && pathname === "/api/gallery") {
       const authErr = requireAdmin(req);
       if (authErr) return json(res, authErr, 401);
@@ -336,11 +365,28 @@ export default async function handler(req, res) {
         title: item.title,
         description: item.description || "",
         media_url: item.media_url,
-        media_type: item.media_type || "image"
+        media_type: item.media_type || "image",
+        event_id: item.event_id ? parseInt(item.event_id, 10) : null,
+        custom_category: item.custom_category || ""
       }));
       const { error } = await getSupabaseAdmin().from("gallery").insert(rows);
       if (error) throw error;
       return json(res, { ok: true, gallery: await listGallery() }, 201);
+    }
+
+    // Add disease solution
+    if (req.method === "POST" && pathname === "/api/disease-solutions") {
+      const authErr = requireAdmin(req);
+      if (authErr) return json(res, authErr, 401);
+      const data = await readBody(req);
+      const { error } = await getSupabaseAdmin().from("disease_solutions").insert({
+        title: data.title,
+        description: data.description || "",
+        media_url: data.media_url,
+        media_type: data.media_type || "video"
+      });
+      if (error) throw error;
+      return json(res, { ok: true, disease_solutions: await listDiseaseSolutions() }, 201);
     }
 
     // Add team official
@@ -399,6 +445,16 @@ export default async function handler(req, res) {
       const { error } = await getSupabaseAdmin().from("gallery").delete().eq("id", id);
       if (error) throw error;
       return json(res, { ok: true, gallery: await listGallery() });
+    }
+
+    // Delete disease solution
+    if (req.method === "DELETE" && pathname.startsWith("/api/disease-solutions/")) {
+      const authErr = requireAdmin(req);
+      if (authErr) return json(res, authErr, 401);
+      const id = pathname.split("/").pop();
+      const { error } = await getSupabaseAdmin().from("disease_solutions").delete().eq("id", id);
+      if (error) throw error;
+      return json(res, { ok: true, disease_solutions: await listDiseaseSolutions() });
     }
 
     // Delete team official

@@ -5,9 +5,11 @@ let state = {
   events: [],
   notices: [],
   gallery: [],
+  disease_solutions: [],
   team: [],
   settings: {},
   filter: "All",
+  galleryFilter: "All",
   adminUser: null
 };
 
@@ -57,11 +59,13 @@ async function refreshPublic() {
     state.events = data.events || [];
     state.notices = data.notices || [];
     state.gallery = data.gallery || [];
+    state.disease_solutions = data.disease_solutions || [];
     state.team = data.team || [];
     applySettings(data.settings);
     renderEvents();
     renderNotices();
     renderGallery();
+    renderDiseaseSolutions();
     renderTeam();
     updateCounts();
   } catch (error) {
@@ -75,14 +79,17 @@ async function refreshAdmin() {
     state.events = data.events || [];
     state.notices = data.notices || [];
     state.gallery = data.gallery || [];
+    state.disease_solutions = data.disease_solutions || [];
     state.team = data.team || [];
     applySettings(data.settings);
     renderEvents();
     renderNotices();
     renderGallery();
+    renderDiseaseSolutions();
     renderTeam();
     renderRecords();
     updateCounts();
+    populateGalleryEventDropdown();
   } catch (error) {
     if (error.message.includes("Admin login")) {
       state.adminUser = null;
@@ -109,13 +116,13 @@ async function login(form) {
       body: JSON.stringify(payload)
     });
     
-    // Store token and user
     if (data.token) localStorage.setItem("yd_token", data.token);
     if (data.user) localStorage.setItem("yd_adminUser", data.user);
     
     state.adminUser = data.user;
     form.reset();
     await refreshAdmin();
+    renderAdminState();
   } catch (error) {
     alert(error.message);
   } finally {
@@ -232,33 +239,120 @@ function renderNotices() {
   `).join("");
 }
 
-function renderGallery() {
-  const grid = $("#galleryGrid");
+// ─── Disease Solutions Rendering ──────────────────────────────────────────────
+
+function renderDiseaseSolutions() {
+  const grid = $("#diseaseSolutionsGrid");
   if (!grid) return;
-  if (!state.gallery || !state.gallery.length) {
-    grid.innerHTML = `<p style="grid-column: 1/-1; color: var(--muted);">No disease solutions added yet.</p>`;
+
+  if (!state.disease_solutions || !state.disease_solutions.length) {
+    grid.innerHTML = `<p style="grid-column: 1/-1; color: var(--muted);">No disease solution videos added yet.</p>`;
     return;
   }
 
-  grid.innerHTML = state.gallery.map((g) => {
-    const isVideo = g.media_type === "video" || (g.media_url && g.media_url.match(/\.(mp4|webm)$/i));
-    const mediaHtml = isVideo 
-      ? `<video src="${g.media_url}" muted loop playsinline></video>
-         <div class="video-icon">▶</div>` 
-      : `<img src="${g.media_url}" alt="${g.title}" loading="lazy">`;
+  grid.innerHTML = state.disease_solutions.map((ds) => {
+    const isVideo = ds.media_type === "video" || (ds.media_url && ds.media_url.match(/\.(mp4|webm)$/i));
+    const mediaHtml = isVideo
+      ? `<video src="${ds.media_url}" muted loop playsinline></video>
+         <div class="video-icon">▶</div>`
+      : `<img src="${ds.media_url}" alt="${ds.title}" loading="lazy">`;
 
     return `
-      <article class="gallery-card" data-gallery-id="${g.id}">
+      <article class="gallery-card" data-ds-id="${ds.id}">
         <div class="gallery-media-wrapper">
           ${mediaHtml}
         </div>
         <div class="gallery-body">
-          <h3>${g.title}</h3>
-          ${g.description ? `<p class="gallery-desc">${g.description}</p>` : ''}
+          <h3>${ds.title}</h3>
+          ${ds.description ? `<p class="gallery-desc">${ds.description}</p>` : ''}
         </div>
       </article>
     `;
   }).join("");
+}
+
+// ─── Gallery Rendering (event-category based) ─────────────────────────────────
+
+function getGalleryCategory(item) {
+  // Determine the display category for a gallery item
+  if (item.event_id) {
+    const ev = state.events.find(e => e.id == item.event_id);
+    if (ev) return ev.title;
+  }
+  if (item.custom_category && item.custom_category.trim()) return item.custom_category.trim();
+  return "General";
+}
+
+function renderGallery() {
+  const grid = $("#galleryGrid");
+  if (!grid) return;
+
+  let items = state.gallery || [];
+
+  // Apply filter
+  if (state.galleryFilter && state.galleryFilter !== "All") {
+    items = items.filter(item => getGalleryCategory(item) === state.galleryFilter);
+  }
+
+  if (!items.length) {
+    grid.innerHTML = `<p style="grid-column: 1/-1; color: var(--muted);">No gallery media found for this category.</p>`;
+    renderGalleryFilters();
+    return;
+  }
+
+  // Group by category
+  const grouped = {};
+  items.forEach(item => {
+    const cat = getGalleryCategory(item);
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(item);
+  });
+
+  let html = "";
+
+  Object.entries(grouped).forEach(([category, catItems]) => {
+    html += `<div class="gallery-category-section" style="grid-column: 1/-1;">
+      <h3 class="gallery-category-title">${category}</h3>
+    </div>`;
+
+    catItems.forEach(g => {
+      const isVideo = g.media_type === "video" || (g.media_url && g.media_url.match(/\.(mp4|webm)$/i));
+      const mediaHtml = isVideo
+        ? `<video src="${g.media_url}" muted loop playsinline></video>
+           <div class="video-icon">▶</div>`
+        : `<img src="${g.media_url}" alt="${g.title}" loading="lazy">`;
+
+      html += `
+        <article class="gallery-card" data-gallery-id="${g.id}">
+          <div class="gallery-media-wrapper">
+            ${mediaHtml}
+          </div>
+          <div class="gallery-body">
+            <h3>${g.title}</h3>
+            ${g.description ? `<p class="gallery-desc">${g.description}</p>` : ''}
+          </div>
+        </article>
+      `;
+    });
+  });
+
+  grid.innerHTML = html;
+  renderGalleryFilters();
+}
+
+function renderGalleryFilters() {
+  const filtersEl = $("#galleryFilters");
+  if (!filtersEl) return;
+
+  // Build unique categories from gallery items
+  const categories = new Set(["All"]);
+  (state.gallery || []).forEach(item => {
+    categories.add(getGalleryCategory(item));
+  });
+
+  filtersEl.innerHTML = Array.from(categories).map(cat => `
+    <button class="chip gallery-chip ${state.galleryFilter === cat ? 'active' : ''}" data-gallery-filter="${cat}">${cat}</button>
+  `).join("");
 }
 
 function renderTeam() {
@@ -316,18 +410,38 @@ function renderRecords() {
   });
 
   html += `<h4 style="margin-top:24px">Disease Solution Program</h4>`;
-  if (state.gallery) {
+  if (state.disease_solutions && state.disease_solutions.length) {
+    state.disease_solutions.forEach((ds) => {
+      html += `
+        <div class="record-row">
+          <div>
+            <strong>${ds.title}</strong>
+            <p>${ds.description ? ds.description.substring(0, 50) + (ds.description.length > 50 ? '...' : '') : 'No description'}</p>
+          </div>
+          <button class="delete-btn" data-delete-ds="${ds.id}">Delete</button>
+        </div>
+      `;
+    });
+  } else {
+    html += `<p style="color: var(--muted); font-size: 0.9em;">No disease solutions added.</p>`;
+  }
+
+  html += `<h4 style="margin-top:24px">Gallery</h4>`;
+  if (state.gallery && state.gallery.length) {
     state.gallery.forEach((g) => {
+      const cat = getGalleryCategory(g);
       html += `
         <div class="record-row">
           <div>
             <strong>${g.title}</strong>
-            <p>${g.description ? g.description.substring(0, 50) + (g.description.length > 50 ? '...' : '') : 'No description'}</p>
+            <p>${cat} • ${g.media_type === 'video' ? '🎬 Video' : '🖼️ Image'}</p>
           </div>
           <button class="delete-btn" data-delete-gallery="${g.id}">Delete</button>
         </div>
       `;
     });
+  } else {
+    html += `<p style="color: var(--muted); font-size: 0.9em;">No gallery media added.</p>`;
   }
 
   html += `<h4 style="margin-top:24px">Position Holders</h4>`;
@@ -346,6 +460,23 @@ function renderRecords() {
   }
 
   list.innerHTML = html;
+}
+
+// ─── Populate Gallery Event Dropdown ─────────────────────────────────────────
+
+function populateGalleryEventDropdown() {
+  const select = $("#galleryEventSelect");
+  if (!select) return;
+  const current = select.value;
+  select.innerHTML = `<option value="">-- Select Event (Optional) --</option>`;
+  state.events.forEach(ev => {
+    const opt = document.createElement("option");
+    opt.value = ev.id;
+    opt.textContent = `${ev.title} (${ev.date})`;
+    select.appendChild(opt);
+  });
+  // Restore selection
+  if (current) select.value = current;
 }
 
 // ─── Dialogs ──────────────────────────────────────────────────────────────────
@@ -388,19 +519,21 @@ function openPdfViewer(url, title) {
   frame.src = url;
 
   dialog.showModal();
-  document.body.style.overflow = "hidden"; // Prevent background scrolling
+  document.body.style.overflow = "hidden";
 }
 
 function closePdfViewer() {
   const dialog = $("#pdfDialog");
   const frame = $("#pdfFrame");
   dialog.close();
-  frame.src = ""; // Stop loading
-  document.body.style.overflow = ""; // Restore scrolling
+  frame.src = "";
+  document.body.style.overflow = "";
 }
 
-function openGalleryItem(id) {
-  const g = state.gallery.find(item => item.id == id);
+function openGalleryItem(id, source) {
+  // source = 'gallery' | 'ds'
+  const list = source === 'ds' ? state.disease_solutions : state.gallery;
+  const g = list.find(item => item.id == id);
   if (!g) return;
   
   const content = $("#galleryDialogContent");
@@ -425,7 +558,6 @@ function closeGalleryDialog() {
   const dialog = $("#galleryDialog");
   const content = $("#galleryDialogContent");
   dialog.close();
-  // Clear content to stop video playback
   setTimeout(() => { content.innerHTML = ''; }, 300);
 }
 
@@ -465,6 +597,7 @@ function renderAdminState() {
     logoutBtn.classList.remove("hidden");
     if (disp) disp.textContent = state.adminUser;
     renderRecords();
+    populateGalleryEventDropdown();
   } else {
     loginBox.classList.remove("hidden");
     adminPanel.classList.add("hidden");
@@ -634,13 +767,23 @@ function bindUi() {
       return;
     }
 
-    // Filter chips
-    const chip = event.target.closest(".chip");
+    // Event filter chips
+    const chip = event.target.closest(".chip:not(.gallery-chip)");
     if (chip) {
-      $$(".chip").forEach((item) => item.classList.remove("active"));
+      $$(".chip:not(.gallery-chip)").forEach((item) => item.classList.remove("active"));
       chip.classList.add("active");
       state.filter = chip.dataset.filter;
       renderEvents();
+      return;
+    }
+
+    // Gallery filter chips
+    const galleryChip = event.target.closest(".gallery-chip");
+    if (galleryChip) {
+      $$(".gallery-chip").forEach((item) => item.classList.remove("active"));
+      galleryChip.classList.add("active");
+      state.galleryFilter = galleryChip.dataset.galleryFilter;
+      renderGallery();
       return;
     }
 
@@ -667,9 +810,17 @@ function bindUi() {
       return;
     }
     
-    const galleryCard = event.target.closest(".gallery-card");
+    // Gallery card click (main gallery)
+    const galleryCard = event.target.closest(".gallery-card[data-gallery-id]");
     if (galleryCard) {
-      openGalleryItem(galleryCard.dataset.galleryId);
+      openGalleryItem(galleryCard.dataset.galleryId, 'gallery');
+      return;
+    }
+
+    // Disease solution card click
+    const dsCard = event.target.closest(".gallery-card[data-ds-id]");
+    if (dsCard) {
+      openGalleryItem(dsCard.dataset.dsId, 'ds');
       return;
     }
 
@@ -695,6 +846,14 @@ function bindUi() {
       await api(`/api/gallery/${galleryDelete.dataset.deleteGallery}`, { method: "DELETE" });
       await refreshAdmin();
       showToast("Gallery item deleted.");
+      return;
+    }
+
+    const dsDelete = event.target.closest("[data-delete-ds]");
+    if (dsDelete && confirm("Delete this disease solution?")) {
+      await api(`/api/disease-solutions/${dsDelete.dataset.deleteDs}`, { method: "DELETE" });
+      await refreshAdmin();
+      showToast("Disease solution deleted.");
       return;
     }
     
@@ -739,14 +898,12 @@ function bindUi() {
     try {
       const data = Object.fromEntries(new FormData(form).entries());
       
-      // Upload image
       const imgFile = form.elements.image?.files[0];
       if (imgFile && imgFile.size > 0) {
         data.image_url = await uploadFile(imgFile);
       }
       delete data.image;
       
-      // Upload PDF
       const pdfFile = form.elements.pdf?.files[0];
       if (pdfFile && pdfFile.size > 0) {
         data.pdf_url = await uploadFile(pdfFile);
@@ -800,8 +957,51 @@ function bindUi() {
       btn.disabled = false;
     }
   });
-  
-  // Add gallery form (Disease Solutions)
+
+  // ─── Add Disease Solution form ────────────────────────────────────────────
+  $("#diseaseSolutionsForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const btn = form.querySelector("button[type=submit]");
+    btn.textContent = "Uploading…";
+    btn.disabled = true;
+    try {
+      const title = form.elements.title.value.trim();
+      const description = form.elements.description.value.trim();
+      const videoFile = form.elements.video?.files[0];
+      
+      if (!videoFile || videoFile.size === 0) {
+        throw new Error("Please select a video file.");
+      }
+      
+      const maxVideoSize = 4.5 * 1024 * 1024;
+      if (videoFile.size > maxVideoSize) {
+        throw new Error(`Video is too large (${(videoFile.size / (1024*1024)).toFixed(2)} MB). Max is 4.5 MB.`);
+      }
+      
+      const url = await uploadFile(videoFile);
+      if (!url) throw new Error("Upload failed.");
+      
+      await api("/api/disease-solutions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description, media_url: url, media_type: "video" })
+      });
+      
+      form.reset();
+      const preview = $("#diseaseSolutionsMediaPreview");
+      if (preview) { preview.innerHTML = ""; preview.classList.add("hidden"); }
+      await refreshAdmin();
+      showToast("Disease solution video uploaded successfully.");
+    } catch (err) {
+      showToast("Error: " + err.message);
+    } finally {
+      btn.textContent = "Upload Video & Save";
+      btn.disabled = false;
+    }
+  });
+
+  // ─── Add Gallery form (multi-photo + single video) ────────────────────────
   $("#galleryForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -809,47 +1009,80 @@ function bindUi() {
     btn.textContent = "Uploading…";
     btn.disabled = true;
     try {
-      const title = form.elements.title.value;
-      const description = form.elements.description.value;
+      const title = form.elements.title.value.trim();
+      const description = form.elements.description.value.trim();
+      const eventId = form.elements.event_id?.value || "";
+      const customCat = form.elements.custom_category?.value.trim() || "";
+      
+      const photoFiles = Array.from(form.elements.photos?.files || []);
       const videoFile = form.elements.video?.files[0];
       
-      if (!videoFile || videoFile.size === 0) {
-        throw new Error("Please select a video file.");
+      if (photoFiles.length === 0 && (!videoFile || videoFile.size === 0)) {
+        throw new Error("Please select at least one photo or a video.");
       }
-      
-      // Limit video upload size to 4.5MB (due to serverless function upload limitations)
-      const maxVideoSize = 4.5 * 1024 * 1024;
-      if (videoFile.size > maxVideoSize) {
-        throw new Error(`Video file is too large (${(videoFile.size / (1024 * 1024)).toFixed(2)} MB). Max limit is 4.5 MB.`);
+
+      const MAX_IMAGE = 3 * 1024 * 1024;
+      const MAX_VIDEO = 4.5 * 1024 * 1024;
+
+      // Validate sizes before uploading
+      for (const f of photoFiles) {
+        if (f.size > MAX_IMAGE) {
+          throw new Error(`Photo "${f.name}" is too large (${(f.size/(1024*1024)).toFixed(2)} MB). Max is 3 MB.`);
+        }
       }
-      
-      const url = await uploadFile(videoFile);
-      if (!url) {
-        throw new Error("Upload failed. Could not upload the video.");
+      if (videoFile && videoFile.size > MAX_VIDEO) {
+        throw new Error(`Video is too large (${(videoFile.size/(1024*1024)).toFixed(2)} MB). Max is 4.5 MB.`);
       }
+
+      const items = [];
       
-      const galleryItem = {
-        title,
-        description,
-        media_url: url,
-        media_type: "video"
-      };
-      
-      await api("/api/gallery", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(galleryItem)
-      });
-      
+      // Upload photos
+      for (let i = 0; i < photoFiles.length; i++) {
+        const f = photoFiles[i];
+        btn.textContent = `Uploading photo ${i + 1}/${photoFiles.length}…`;
+        const url = await uploadFile(f);
+        items.push({
+          title: photoFiles.length === 1 ? title : `${title} (${i + 1})`,
+          description,
+          media_url: url,
+          media_type: "image",
+          event_id: eventId || null,
+          custom_category: customCat
+        });
+      }
+
+      // Upload video if provided
+      if (videoFile && videoFile.size > 0) {
+        btn.textContent = "Uploading video…";
+        const url = await uploadFile(videoFile);
+        items.push({
+          title: `${title} (Video)`,
+          description,
+          media_url: url,
+          media_type: "video",
+          event_id: eventId || null,
+          custom_category: customCat
+        });
+      }
+
+      // Insert all items
+      for (const item of items) {
+        await api("/api/gallery", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(item)
+        });
+      }
+
       form.reset();
-      $("#galleryMediaPreview").innerHTML = "";
-      $("#galleryMediaPreview").classList.add("hidden");
+      const preview = $("#galleryMediaPreview");
+      if (preview) { preview.innerHTML = ""; preview.classList.add("hidden"); }
       await refreshAdmin();
-      showToast("Disease solution uploaded successfully.");
+      showToast(`Gallery updated: ${items.length} item(s) uploaded.`);
     } catch (err) {
       showToast("Error: " + err.message);
     } finally {
-      btn.textContent = "Upload Video & Save";
+      btn.textContent = "Upload to Gallery";
       btn.disabled = false;
     }
   });
@@ -886,44 +1119,69 @@ function bindUi() {
       btn.disabled = false;
     }
   });
-  
-  // Gallery media preview (Disease Solutions video preview)
-  const videoInput = $("#galleryForm input[name='video']");
-  const mediaPreview = $("#galleryMediaPreview");
-  
+
+  // ─── Media Previews ───────────────────────────────────────────────────────
+
+  // Disease solutions video preview
+  const dsVideoInput = $("#diseaseSolutionsForm input[name='video']");
+  const dsMediaPreview = $("#diseaseSolutionsMediaPreview");
+  if (dsVideoInput && dsMediaPreview) {
+    dsVideoInput.addEventListener("change", () => {
+      dsMediaPreview.innerHTML = "";
+      const video = dsVideoInput.files[0];
+      if (!video) { dsMediaPreview.classList.add("hidden"); return; }
+      const url = URL.createObjectURL(video);
+      dsMediaPreview.innerHTML = `
+        <div style="position:relative;width:100%;max-width:280px;height:160px;border-radius:4px;overflow:hidden;border:1px solid var(--line);">
+          <video src="${url}" style="width:100%;height:100%;object-fit:cover;" controls></video>
+        </div>
+        <p style="font-size:0.82em;color:var(--muted);margin:4px 0 0;">${video.name} (${(video.size/(1024*1024)).toFixed(2)} MB)</p>
+      `;
+      dsMediaPreview.classList.remove("hidden");
+    });
+  }
+
+  // Gallery media preview (photos + video)
+  const galleryPhotosInput = $("#galleryForm input[name='photos']");
+  const galleryVideoInput = $("#galleryForm input[name='video']");
+  const galleryMediaPreview = $("#galleryMediaPreview");
+
   function updateGalleryPreview() {
-    if (!mediaPreview) return;
-    mediaPreview.innerHTML = "";
-    
-    const video = videoInput?.files?.[0];
-    if (!video) {
-      mediaPreview.classList.add("hidden");
+    if (!galleryMediaPreview) return;
+    galleryMediaPreview.innerHTML = "";
+
+    const photos = Array.from(galleryPhotosInput?.files || []);
+    const video = galleryVideoInput?.files[0];
+
+    if (photos.length === 0 && !video) {
+      galleryMediaPreview.classList.add("hidden");
       return;
     }
-    
-    const url = URL.createObjectURL(video);
-    const wrapper = document.createElement("div");
-    wrapper.style.position = "relative";
-    wrapper.style.width = "100%";
-    wrapper.style.maxWidth = "280px";
-    wrapper.style.height = "160px";
-    wrapper.style.borderRadius = "4px";
-    wrapper.style.overflow = "hidden";
-    wrapper.style.border = "1px solid var(--line)";
-    
-    const vid = document.createElement("video");
-    vid.src = url;
-    vid.style.width = "100%";
-    vid.style.height = "100%";
-    vid.style.objectFit = "cover";
-    vid.controls = true;
-    wrapper.appendChild(vid);
-    
-    mediaPreview.appendChild(wrapper);
-    mediaPreview.classList.remove("hidden");
+
+    photos.forEach(f => {
+      const url = URL.createObjectURL(f);
+      galleryMediaPreview.innerHTML += `
+        <div style="position:relative;width:80px;height:80px;border-radius:4px;overflow:hidden;border:1px solid var(--line);">
+          <img src="${url}" style="width:100%;height:100%;object-fit:cover;">
+        </div>
+      `;
+    });
+
+    if (video) {
+      const url = URL.createObjectURL(video);
+      galleryMediaPreview.innerHTML += `
+        <div style="position:relative;width:120px;height:80px;border-radius:4px;overflow:hidden;border:2px solid var(--sun);">
+          <video src="${url}" style="width:100%;height:100%;object-fit:cover;" muted></video>
+          <div style="position:absolute;bottom:2px;right:4px;font-size:0.7em;background:rgba(0,0,0,0.6);color:#fff;padding:1px 4px;border-radius:3px;">▶ Video</div>
+        </div>
+      `;
+    }
+
+    galleryMediaPreview.classList.remove("hidden");
   }
-  
-  videoInput?.addEventListener("change", updateGalleryPreview);
+
+  galleryPhotosInput?.addEventListener("change", updateGalleryPreview);
+  galleryVideoInput?.addEventListener("change", updateGalleryPreview);
 
   // Team photo preview
   const photoInput = $("#teamForm input[name='photo']");
@@ -931,11 +1189,7 @@ function bindUi() {
   if (photoInput && photoPreview) {
     photoInput.addEventListener("change", () => {
       const file = photoInput.files[0];
-      if (!file) {
-        photoPreview.classList.add("hidden");
-        return;
-      }
-      
+      if (!file) { photoPreview.classList.add("hidden"); return; }
       const url = URL.createObjectURL(file);
       photoPreview.innerHTML = `<img src="${url}" style="width:100px; height:100px; object-fit:cover; border-radius: 50%;">`;
       photoPreview.classList.remove("hidden");
@@ -958,8 +1212,8 @@ state.adminUser = localStorage.getItem("yd_adminUser") || null;
 
 applyHeroUrl(DEFAULT_HERO);
 window.addEventListener("resize", () => {
-  if (state.settings && state.settings.hero_url) {
-    applyHeroUrl(state.settings.hero_url);
+  if (state.settings && state.settings.hero_image_url) {
+    applyHeroUrl(state.settings.hero_image_url);
   } else {
     applyHeroUrl(DEFAULT_HERO);
   }
